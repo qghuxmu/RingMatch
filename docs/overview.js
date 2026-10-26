@@ -455,16 +455,23 @@
     const width=root.clientWidth-2;state.mobile=width<650;state.w=state.mobile?560:1120;state.h=state.mobile?1450:650;const cssHeight=width*state.h/state.w;
     const dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(width*dpr);canvas.height=Math.round(cssHeight*dpr);canvas.style.aspectRatio=state.w+'/'+state.h;state.scale=canvas.width/state.w;render();
   }
-  function updateButton(){const button=$('#rm-motion-run');button.textContent=state.playing?'Running…':'Run';button.disabled=state.playing||!state.loaded;}
-  function pause(manual=true){state.playing=false;if(manual){state.userPaused=true;state.playRequested=false;}cancelAnimationFrame(state.raf);updateButton();}
+  function updateButton(){
+    const button=$('#rm-motion-run');button.textContent=state.playing?'Running…':'Run';button.disabled=state.playing||!state.loaded;
+    $('#rm-motion-pause').disabled=!state.playing||!state.loaded;
+    $('#rm-motion-reset').disabled=!state.loaded;
+  }
+  function pause(manual=true){state.playing=false;if(manual){state.userPaused=true;state.playRequested=false;state.resumeOnEnter=false;}cancelAnimationFrame(state.raf);updateButton();}
   function tick(timestamp){
     if(!state.playing)return;let dt=state.last?Math.min((timestamp-state.last)/1000,.08):0;state.last=timestamp;
     if(dt>0){state.frames.push(dt);if(state.frames.length>90)state.frames.shift();if(state.frameCount%20===0){canvas.dataset.fps=(state.frames.length/state.frames.reduce((a,b)=>a+b,0)).toFixed(1);const intervals=state.frames.slice().sort((a,b)=>a-b);canvas.dataset.frameP95=(intervals[Math.floor(intervals.length*.95)]*1000).toFixed(1);}}
     state.time=Math.min(duration,state.time+dt*baselineSpeed);render();if(state.time>=duration){pause(false);return;}state.raf=requestAnimationFrame(tick);
   }
   function replay(){state.time=0;state.last=0;state.userPaused=false;render();play();}
+  function reset(){pause();state.time=0;state.last=0;render();}
   function play(){if(!state.loaded){state.playRequested=true;return;}state.playRequested=false;if(state.time>=duration){replay();return;}cancelAnimationFrame(state.raf);state.playing=true;state.userPaused=false;state.last=0;updateButton();state.raf=requestAnimationFrame(tick);}
-  $('#rm-motion-run').addEventListener('click',replay);
+  $('#rm-motion-run').addEventListener('click',play);
+  $('#rm-motion-pause').addEventListener('click',()=>pause());
+  $('#rm-motion-reset').addEventListener('click',reset);
   document.querySelector('#watch-demo')?.addEventListener('click',event=>{
     event.preventDefault();
     const box=root.getBoundingClientRect(),offset=Math.max(24,(window.innerHeight-box.height)/2);
@@ -484,7 +491,8 @@
   selector.value=d.id;
   function controlsLoading(loading){
     root.setAttribute('aria-busy',String(loading));
-    $('#rm-motion-run').disabled=loading||state.playing;
+    if(loading)['#rm-motion-run','#rm-motion-pause','#rm-motion-reset'].forEach(id=>$(id).disabled=true);
+    else updateButton();
     status.textContent=loading?'Loading case…':'';
   }
   async function activateCase(trace,version){
