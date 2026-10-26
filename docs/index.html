@@ -59,7 +59,7 @@
   <p class="section-description">Given a ground panorama and a geo-referenced aerial region containing the camera, RingMatch combines multi-hypothesis search with geometric verification. We consider the known-orientation setting: the panorama heading is known relative to the north-up aerial image.</p>
   <div class="method-steps">
     <article><span class="index">01</span><h3>Multi-hypothesis search</h3><p>Sample multiple coordinate predictions and cluster nearby predictions into hypotheses, preserving distinct plausible locations.</p></article>
-    <article><span class="index">02</span><h3>Branch-and-zoom</h3><p>Recursively narrow the region around each retained hypothesis to recover finer cross-view evidence. The default schedule is 400 → 200 → 100 → 50 m.</p></article>
+    <article><span class="index">02</span><h3>Branch-and-zoom</h3><p>Recursively narrow the region around each retained hypothesis to recover finer cross-view evidence.</p></article>
     <article><span class="index">03</span><h3>Depth-ring verification</h3><p>Compare the ground depth ring with predicted aerial rings. An LVLM verifier uses ring patterns and visual context to select the final candidate.</p></article>
   </div>
   <figure class="method-figure paper-figure">
