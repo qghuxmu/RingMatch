@@ -5,9 +5,9 @@
   const root=document.querySelector('#rm-motion');
   if(!d||!root)return;
   const canvas=root.querySelector('canvas'),c=canvas.getContext('2d',{alpha:false});
-  const $=s=>root.querySelector(s),duration=102,baselineSpeed=1.5;
+  const $=s=>root.querySelector(s),duration=102,baselineSpeed=2.25;
   const palette=['#d58b30','#238ac2','#aa70b4'];
-  const state={time:0,playing:false,speed:1,last:0,raf:0,mobile:false,w:1120,h:650,scale:1,loaded:false,playRequested:false,autoStarted:false,userPaused:false,resumeOnEnter:false,phase:'',frames:[],frameCount:0};
+  const state={time:0,playing:false,last:0,raf:0,mobile:false,w:1120,h:650,scale:1,loaded:false,playRequested:false,userPaused:false,resumeOnEnter:false,phase:'',frames:[],frameCount:0};
   let images={};
   const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
   const smooth=v=>{v=clamp(v);return v*v*v*(v*(v*6-15)+10);};
@@ -18,7 +18,7 @@
   const n=id=>d.byId[id];
   const kids=id=>d.nodes.filter(node=>node.parent===id);
   const family=node=>node.id==='root'?'#7b8c6a':node.label?(node.label==='A'?palette[0]:palette[1]):palette[node.familyIndex%palette.length];
-  const score=value=>Number(value).toFixed(2);
+  const score=value=>String(Math.round(value));
   const chosen=label=>d.candidates.find(x=>x.label===label);
   let shortlistedIds=new Set(d.candidates.map(candidate=>candidate.id));
   function region(node,extent){const w=extent/400;return {x:clamp(node.p[0]-w/2,0,1-w),y:clamp(node.p[1]-w/2,0,1-w),w};}
@@ -228,7 +228,12 @@
       const appear=u(t,59.3+index*.15,61+index*.15);if(!appear)return;
       const b=patchBox(index,t,L),low=candidate.label===d.verification.selected?0:selection(t),bundle=evidenceLayout(t,L).bundle;
       const parentNode=n(candidate.parent),parentBox=L.col50(col50Order.indexOf(candidate.parent));
-      connection(mapPoint(candidate.p,parentBox,parentNode.input),{x:b.x,y:b.y+b.w/2},appear,family(candidate),2,{alpha:1-u(t,64,66)});
+      // Matching source badges identify the shortlisted points without crossing leader lines.
+      withAlpha(appear*(1-u(t,63.3,64)),()=>{
+        const point=mapPoint(candidate.p,parentBox,parentNode.input);
+        circle(point.x,point.y,8,null,family(candidate),2.2);
+        pill(candidate.label,point.x+15,point.y+23,family(candidate),11);
+      });
       patchImage(candidate,b,blend(family(candidate),'#aeb7a6',low),appear*(1-low*.55),.02+low*.30);
       withAlpha(appear*(1-low*.72),()=>{
         text(bundle>.6?'Candidate '+candidate.label:candidate.label,b.x+4,b.y-10,state.mobile?17:14,family(candidate),'left',600);
@@ -255,12 +260,12 @@
     text('Depth-ring verification',24,27,15,'#3d5132','left',550);
     depthFlow(t,V);groundPredictor(V,u(t,67.25,68.5));
     const extraction=u(t,70.5,74),groundAlpha=u(t,70.5,71.2);
-    withAlpha(groundAlpha,()=>{plotAxes(V.ring);ring(d.rings.ground,V.ring,'#343f2d',extraction,2.1);text('Ground ring',V.ring.x,V.ring.y+V.ring.r+27,state.mobile?15:12,'#596e48','center',500);});
+    withAlpha(groundAlpha,()=>{plotAxes(V.ring);ring(d.displayRings.ground,V.ring,'#343f2d',extraction,2.1);text('Ground ring',V.ring.x,V.ring.y+V.ring.r+27,state.mobile?15:12,'#596e48','center',500);});
     aerialPredictor(t,V);
     const ringStart=u(t,75.2,78.2);
     V.plots.forEach((plot,index)=>{
       const candidate=d.candidates[index],col=family(candidate),appear=u(t,75+index*.18,75.8+index*.18);
-      withAlpha(appear,()=>{plotAxes(plot);ring(d.rings[candidate.label],plot,col,ringStart,2.5);text('Aerial ring '+candidate.label,plot.x,plot.y+plot.r+27,state.mobile?15:12,'#596e48','center',500);});
+      withAlpha(appear,()=>{plotAxes(plot);ring(d.displayRings[candidate.label],plot,col,ringStart,2.5);text('Aerial ring '+candidate.label,plot.x,plot.y+plot.r+27,state.mobile?15:12,'#596e48','center',500);});
     });
   }
   function aerialPredictor(t,V){
@@ -302,10 +307,34 @@
   function candidateMarker(candidate,box,{opacity=1,selected=false,large=false}={}){
     const point=mapPoint(candidate.p,box,{x:0,y:0,w:1}),color=family(candidate);
     withAlpha(opacity,()=>{
-      circle(point.x,point.y,large?7:3.7,color,'#fff',large?2.3:1.2);
-      if(selected)circle(point.x,point.y,large?15:8,null,color,large?2:1.2);
-      text(candidate.label,point.x+(large?19:8),point.y-(large?8:6),large?16:10,color,'left',600);
+      if(selected&&large){circle(point.x,point.y,19,color+'24');circle(point.x,point.y,14,null,'#fff',5);}
+      circle(point.x,point.y,large?(selected?7:5):3.7,color,'#fff',large?2.3:1.2);
+      if(selected)circle(point.x,point.y,large?14:8,null,color,large?3:1.2);
+      if(large){
+        const left=point.x>box.x+box.w-45;
+        mapLabel(candidate.label,point.x+(left?-21:21),point.y+19,color,left?'right':'left',selected?16:14);
+      }else text(candidate.label,point.x+8,point.y-6,10,color,'left',600);
     });
+  }
+  function mapLabel(label,x,y,color,align='left',size=13){
+    c.font=`600 ${size}px Arial`;c.textAlign=align;c.textBaseline='alphabetic';c.strokeStyle='#fff';c.lineWidth=4;c.lineJoin='round';c.strokeText(label,x,y);text(label,x,y,size,color,align,600);
+  }
+  function star(x,y,r,fill='#293d22'){
+    c.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rr=i%2?r*.43:r,px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;if(i)c.lineTo(px,py);else c.moveTo(px,py);}c.closePath();c.strokeStyle='#fff';c.lineWidth=2;c.stroke();c.fillStyle=fill;c.fill();
+  }
+  function groundTruthMarker(box){
+    const point=mapPoint(d.groundTruth,box,{x:0,y:0,w:1});
+    const label={x:clamp(point.x-22,box.x+29,box.x+box.w-30),y:clamp(point.y-20,box.y+18,box.y+box.w-18)};
+    c.beginPath();c.moveTo(point.x-5,point.y-6);c.lineTo(label.x+4,label.y+3);c.strokeStyle='#fff';c.lineWidth=3;c.stroke();c.strokeStyle='#435439';c.lineWidth=1;c.stroke();
+    star(point.x,point.y,8);mapLabel('GT',label.x,label.y,'#293d22','right',13);
+  }
+  function routedArrow(points,progress,color){
+    if(progress<=0)return;
+    const lengths=points.slice(1).map((p,i)=>Math.hypot(p.x-points[i].x,p.y-points[i].y)),total=lengths.reduce((a,b)=>a+b,0);
+    let remaining=total*progress;c.beginPath();c.moveTo(points[0].x,points[0].y);
+    for(let i=0;i<lengths.length;i++){const portion=Math.min(1,remaining/lengths[i]);c.lineTo(mix(points[i].x,points[i+1].x,portion),mix(points[i].y,points[i+1].y,portion));remaining-=lengths[i];if(remaining<=0)break;}
+    c.strokeStyle=color;c.lineWidth=1.8;c.lineJoin='round';c.lineCap='round';c.stroke();
+    withAlpha(u(progress,.85,1),()=>{const b=points.at(-1),a=points.at(-2),angle=Math.atan2(b.y-a.y,b.x-a.x);c.beginPath();c.moveTo(b.x-7*Math.cos(angle-.45),b.y-7*Math.sin(angle-.45));c.lineTo(b.x,b.y);c.lineTo(b.x-7*Math.cos(angle+.45),b.y-7*Math.sin(angle+.45));c.stroke();});
   }
   function tickMark(x,y,color,progress){
     withAlpha(progress,()=>{c.beginPath();c.moveTo(x-4,y);c.lineTo(x-1,y+3);c.lineTo(x+5,y-4);c.strokeStyle=color;c.lineWidth=1.8;c.lineCap='round';c.stroke();});
@@ -325,7 +354,7 @@
       depthFlow(t,source);
       aerialPredictor(t,source);
       groundPredictor(source);
-      plotAxes(source.ring);ring(d.rings.ground,source.ring,'#343f2d',1,2.1);text('Ground ring',source.ring.x,source.ring.y+source.ring.r+27,state.mobile?15:12,'#596e48','center',500);
+      plotAxes(source.ring);ring(d.displayRings.ground,source.ring,'#343f2d',1,2.1);text('Ground ring',source.ring.x,source.ring.y+source.ring.r+27,state.mobile?15:12,'#596e48','center',500);
     });
     const panoBox=rect(source.pano,V.pano,assembly),contextBox=V.context;
     panoramaImage(panoBox);text('Ground panorama',panoBox.x,panoBox.y-12,state.mobile?14:12,'#738466');
@@ -343,7 +372,7 @@
         text('Candidate '+candidate.label,patch.x+2,patch.y-12,state.mobile?15:13,color,'left',550);
         withAlpha(assembly,()=>text('['+candidate.p.map(v=>Math.round(v*1000)).join(', ')+']',patch.x+patch.w/2,patch.y+patch.w+22,state.mobile?14:12,'#7c8871','center'));
         const pairing=u(t,80.8,82.5);
-        plotAxes(plot);ring(d.rings.ground,plot,'#38432f',1,1.9,pairing);ring(d.rings[candidate.label],plot,color,1,2.3);
+        plotAxes(plot);ring(d.displayRings.ground,plot,'#38432f',1,1.9,pairing);ring(d.displayRings[candidate.label],plot,color,1,2.3);
         withAlpha(1-pairing,()=>text('Aerial ring '+candidate.label,plot.x,plot.y+plot.r+27,state.mobile?15:12,'#596e48','center',500));
         withAlpha(pairing,()=>text('Ground + '+candidate.label,plot.x,plot.y+plot.r+21,state.mobile?14:11,'#718166','center'));
       });
@@ -361,8 +390,8 @@
     });
     const outputFlow=u(t,87.5,88.5);
     if(state.mobile){
-      arrow({x:280,y:model.y+model.h+3},{x:280,y:930},outputFlow,'#789260');
-    }else arrow({x:model.x+model.w+3,y:model.y+model.h/2},{x:V.rows[0].x-12,y:(V.rows[0].y+V.rows[1].y+V.rows[1].h)/2},outputFlow,'#789260');
+      arrow({x:280,y:model.y+model.h+3},{x:280,y:918},outputFlow,'#789260');
+    }else arrow({x:model.x+model.w+3,y:model.y+model.h/2},{x:V.rows[0].x-24,y:(V.rows[0].y+V.rows[1].y+V.rows[1].h)/2},outputFlow,'#789260');
     withAlpha(decision,()=>{
       c.beginPath();
       if(state.mobile){c.moveTo(44,940);c.lineTo(44,935);c.lineTo(516,935);c.lineTo(516,940);}
@@ -391,12 +420,17 @@
     // Return the selected existing candidate on a separate fixed map, without displacing the evidence.
     const map=V.map,selectedRow=V.rows[d.candidates.findIndex(candidate=>candidate.label===winner.label)];
     const mapFlow=u(t,94.5,96),mapShow=u(t,95,96.5),pointShow=u(t,96.2,97.5);
-    arrow({x:selectedRow.x+selectedRow.w/2,y:selectedRow.y+selectedRow.h+5},{x:map.x+map.w/2,y:map.y-6},mapFlow,family(winner),1,state.mobile);
+    if(state.mobile)arrow({x:selectedRow.x+selectedRow.w/2,y:selectedRow.y+selectedRow.h+5},{x:map.x+map.w/2,y:map.y-9},mapFlow,family(winner),1,true);
+    else routedArrow([{x:selectedRow.x+selectedRow.w+5,y:selectedRow.y+selectedRow.h/2},{x:1094,y:selectedRow.y+selectedRow.h/2},{x:1094,y:map.y+24},{x:map.x+map.w+7,y:map.y+24}],mapFlow,family(winner));
     withAlpha(mapShow,()=>{
       text('Final location',map.x,map.y-12,state.mobile?16:13,'#566c46','left',550);
       cropImage({x:0,y:0,w:1},map,'#c3cfb7',1,.03);
-      d.candidates.forEach(candidate=>candidateMarker(candidate,map,{opacity:(candidate.label===winner.label?1:.2)*pointShow,selected:candidate.label===winner.label,large:true}));
-      withAlpha(pointShow,()=>text(winner.label+'  ['+winner.p.map(v=>Math.round(v*1000)).join(', ')+']',map.x+map.w/2,map.y+map.w+24,state.mobile?16:14,family(winner),'center',600));
+      d.candidates.forEach(candidate=>candidateMarker(candidate,map,{opacity:(candidate.label===winner.label?1:.62)*pointShow,selected:candidate.label===winner.label,large:true}));
+      withAlpha(pointShow,()=>{
+        groundTruthMarker(map);
+        const y=map.y+map.w+23;star(map.x+8,y-4,5);text('GT',map.x+19,y,11,'#44553b');
+        d.candidates.forEach((candidate,index)=>{const x=map.x+82+index*94,color=family(candidate);circle(x,y-4,4,color,'white',1);text(candidate.label+(candidate.label===winner.label?' selected':''),x+10,y,11,color,'left',candidate.label===winner.label?600:400);});
+      });
     });
   }
   function render(){
@@ -415,34 +449,33 @@
     const label=t<64?'Search':t<95?'Depth-ring verification':'Final localization';
     canvas.dataset.phase=label;canvas.dataset.time=t.toFixed(3);canvas.dataset.parallelBranches=t<10?0:t<29.5?kids('root').length:t<44.5?kept100Order.length:t<59.3?col50Order.length:2;canvas.dataset.renderedFrames=String(++state.frameCount);
     canvas.dataset.decision=t>=25&&t<28?'pruning-100':t>=41&&t<44?'pruning-50':t>=80.5&&t<85?'grouped-inputs':t>=85&&t<89?'feeding-lvlm':t>=91&&t<95?'candidate-selected':'none';
-    const clock=v=>Math.floor(v/60)+':'+String(Math.floor(v%60)).padStart(2,'0');
-    $('#rm-motion-time').value=t;$('#rm-motion-clock').textContent=clock(t/baselineSpeed)+' / '+clock(duration/baselineSpeed);
+
   }
   function resize(){
     const width=root.clientWidth-2;state.mobile=width<650;state.w=state.mobile?560:1120;state.h=state.mobile?1450:650;const cssHeight=width*state.h/state.w;
     const dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(width*dpr);canvas.height=Math.round(cssHeight*dpr);canvas.style.aspectRatio=state.w+'/'+state.h;state.scale=canvas.width/state.w;render();
   }
-  function updateButton(){$('#rm-motion-play').textContent=state.playing?'Ⅱ Pause':'▶ Play';$('#rm-motion-play').setAttribute('aria-label',state.playing?'Pause animation':'Play animation');}
+  function updateButton(){const button=$('#rm-motion-run');button.textContent=state.playing?'Running…':'Run';button.disabled=state.playing||!state.loaded;}
   function pause(manual=true){state.playing=false;if(manual){state.userPaused=true;state.playRequested=false;}cancelAnimationFrame(state.raf);updateButton();}
   function tick(timestamp){
     if(!state.playing)return;let dt=state.last?Math.min((timestamp-state.last)/1000,.08):0;state.last=timestamp;
     if(dt>0){state.frames.push(dt);if(state.frames.length>90)state.frames.shift();if(state.frameCount%20===0){canvas.dataset.fps=(state.frames.length/state.frames.reduce((a,b)=>a+b,0)).toFixed(1);const intervals=state.frames.slice().sort((a,b)=>a-b);canvas.dataset.frameP95=(intervals[Math.floor(intervals.length*.95)]*1000).toFixed(1);}}
-    state.time=Math.min(duration,state.time+dt*baselineSpeed*state.speed);render();if(state.time>=duration){pause(false);return;}state.raf=requestAnimationFrame(tick);
+    state.time=Math.min(duration,state.time+dt*baselineSpeed);render();if(state.time>=duration){pause(false);return;}state.raf=requestAnimationFrame(tick);
   }
   function replay(){state.time=0;state.last=0;state.userPaused=false;render();play();}
   function play(){if(!state.loaded){state.playRequested=true;return;}state.playRequested=false;if(state.time>=duration){replay();return;}cancelAnimationFrame(state.raf);state.playing=true;state.userPaused=false;state.last=0;updateButton();state.raf=requestAnimationFrame(tick);}
-  $('#rm-motion-play').addEventListener('click',()=>state.playing?pause():play());$('#rm-motion-replay').addEventListener('click',replay);
+  $('#rm-motion-run').addEventListener('click',replay);
   document.querySelector('#watch-demo')?.addEventListener('click',event=>{
     event.preventDefault();
     const box=root.getBoundingClientRect(),offset=Math.max(24,(window.innerHeight-box.height)/2);
     window.scrollTo({top:Math.max(0,window.scrollY+box.top-offset),behavior:reduced?'auto':'smooth'});
     window.history.replaceState(null,'','#rm-motion');
-    root.focus({preventScroll:true});state.autoStarted=true;state.resumeOnEnter=false;replay();
+    root.focus({preventScroll:true});state.resumeOnEnter=false;replay();
   });
-  $('#rm-motion-time').addEventListener('input',e=>{pause();state.time=Number(e.target.value);render();});$('#rm-motion-speed').addEventListener('change',e=>{state.speed=Number(e.target.value);});
+
   new ResizeObserver(resize).observe(root);
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if('IntersectionObserver' in window)new IntersectionObserver(entries=>{const visible=entries[0].isIntersecting;if(!visible&&state.playing){state.resumeOnEnter=true;pause(false);}if(visible&&state.loaded&&!state.userPaused&&!reduced&&(!state.autoStarted||state.resumeOnEnter)){state.autoStarted=true;state.resumeOnEnter=false;play();}},{threshold:.12}).observe(canvas);
+  if('IntersectionObserver' in window)new IntersectionObserver(entries=>{if(!entries[0].isIntersecting&&state.playing){state.resumeOnEnter=true;pause(false);}else if(entries[0].isIntersecting&&state.resumeOnEnter&&!state.userPaused){state.resumeOnEnter=false;play();}},{threshold:.12}).observe(canvas);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)pause(false);});
   let loadVersion=0;
   const entries=window.RINGMATCH_CASES||[];
@@ -451,8 +484,8 @@
   selector.value=d.id;
   function controlsLoading(loading){
     root.setAttribute('aria-busy',String(loading));
-    ['#rm-motion-play','#rm-motion-replay','#rm-motion-time'].forEach(id=>$(id).disabled=loading);
-    status.textContent=loading?'Loading case…':'Recorded inference';
+    $('#rm-motion-run').disabled=loading||state.playing;
+    status.textContent=loading?'Loading case…':'';
   }
   async function activateCase(trace,version){
     const nextImages={};
@@ -460,19 +493,19 @@
     const ready=await Promise.all([loadImage('aerial','high'),loadImage('pano','high')]);
     if(version!==loadVersion)return;
     if(!ready.every(Boolean))throw new Error('Input image download failed');
-    d=trace;images=nextImages;updateOrders();state.loaded=true;state.time=0;state.last=0;state.phase='';state.autoStarted=false;state.userPaused=false;state.resumeOnEnter=false;selector.value=trace.id;controlsLoading(false);resize();
+    d=trace;images=nextImages;updateOrders();state.loaded=true;state.time=0;state.last=0;state.phase='';state.userPaused=false;state.resumeOnEnter=false;selector.value=trace.id;controlsLoading(false);updateButton();resize();
     canvas.dataset.caseId=trace.id;
-    if(state.playRequested)play();else if(!reduced){const r=canvas.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0){state.autoStarted=true;play();}}
+    if(state.playRequested)play();
     ['cropA','cropB','context'].forEach(key=>loadImage(key,'low').then(()=>{if(version===loadVersion){images=nextImages;render();}}));
   }
   async function switchCase(id){
-    const version=++loadVersion;pause(false);state.loaded=false;controlsLoading(true);
+    const version=++loadVersion;pause(false);state.playRequested=false;state.loaded=false;controlsLoading(true);
     try{const trace=await window.loadRingMatchCase(id);if(version!==loadVersion)return;await activateCase(trace,version);}
-    catch(error){if(version!==loadVersion)return;controlsLoading(false);status.textContent='Unable to load case';selector.value=d.id;state.loaded=!!images.aerial?.naturalWidth;}
+    catch(error){if(version!==loadVersion)return;controlsLoading(false);status.textContent='Unable to load case';selector.value=d.id;state.loaded=!!images.aerial?.naturalWidth;updateButton();}
   }
   selector.addEventListener('change',event=>switchCase(event.target.value));
   function stepCase(delta){const index=entries.findIndex(entry=>entry.id===selector.value),next=entries[(index+delta+entries.length)%entries.length];selector.value=next.id;switchCase(next.id);}
   $('#rm-case-prev').addEventListener('click',()=>stepCase(-1));$('#rm-case-next').addEventListener('click',()=>stepCase(1));
-  controlsLoading(true);activateCase(d,++loadVersion).catch(()=>{controlsLoading(false);status.textContent='Unable to load case';});
+  controlsLoading(true);activateCase(d,++loadVersion).catch(()=>{controlsLoading(false);updateButton();status.textContent='Unable to load case';});
   resize();
 })();
