@@ -2,6 +2,7 @@
 const q = s => document.querySelector(s);
 const qa = s => [...document.querySelectorAll(s)];
 const state={setting:'cross',scale:'400',stage:0};
+q('#read-paper')?.addEventListener('click',event=>{if(event.currentTarget.getAttribute('aria-disabled')==='true')event.preventDefault();});
 function selectGroup(selector,key,value){qa(selector).forEach(b=>{const active=b.dataset[key]===String(value);b.classList.toggle('selected',active);b.setAttribute('aria-pressed',String(active));});}
 function renderResults(){
   const {setting,scale}=state;

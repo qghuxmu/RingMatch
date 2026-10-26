@@ -71,3 +71,21 @@ main>section[id]:not(#overview){max-width:760px}
 .zero-shot-table thead th:nth-child(1){width:150px}
 .zero-shot-table thead th:nth-child(2){width:175px}
 .zero-shot-table thead th:nth-child(3){width:90px;white-space:nowrap}
+
+/* Primary paper and demo links, followed by the supporting resources. */
+.paper-header h1{margin-bottom:24px}
+.paper-actions{display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:13px}
+.paper-action{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:47px;padding:10px 21px;border:1px solid #cfd9c6;border-radius:6px;font-size:14px;font-weight:550;line-height:1.4;white-space:nowrap;transition:background-color .15s,border-color .15s}
+.paper-action svg{width:19px;height:19px;flex-shrink:0}
+.paper-action:hover{text-decoration:none}
+.paper-action-primary{background:#4d762a;border-color:#4d762a;color:#fff}
+.paper-action-primary:hover{background:#426724;border-color:#426724}
+.paper-action-secondary{background:#fff;color:#46583b}
+.paper-action-secondary:hover{background:#f5f8f1;border-color:#aebf9e}
+.paper-action[aria-disabled="true"]{pointer-events:none;cursor:default}
+.paper-header .paper-links{gap:10px}
+.paper-header .paper-links>a,.paper-header .paper-links>button{min-width:112px;min-height:38px;padding:7px 16px}
+#rm-motion:focus-visible{outline:2px solid #709151;outline-offset:5px}
+@media(max-width:540px){.paper-header h1{margin-bottom:21px}.paper-actions{gap:9px;margin-bottom:11px}.paper-action{min-height:44px;padding:10px 13px;gap:7px;font-size:13px}.paper-action svg{width:17px;height:17px}.paper-header .paper-links{gap:8px}.paper-header .paper-links>a,.paper-header .paper-links>button{min-width:0;flex:1;max-width:120px;padding:7px 12px}}
+@media(max-width:350px){.paper-actions{flex-direction:column}.paper-action{width:100%;max-width:260px}}
+@media(prefers-reduced-motion:reduce){.paper-action{transition:none}}

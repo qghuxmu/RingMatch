@@ -6,7 +6,7 @@
   const canvas=root.querySelector('canvas'),c=canvas.getContext('2d',{alpha:false});
   const $=s=>root.querySelector(s),duration=102,baselineSpeed=1.5;
   const palette=['#d58b30','#238ac2','#aa70b4'];
-  const state={time:0,playing:false,speed:1,last:0,raf:0,mobile:false,w:1120,h:650,scale:1,loaded:false,autoStarted:false,userPaused:false,resumeOnEnter:false,phase:'',frames:[],frameCount:0};
+  const state={time:0,playing:false,speed:1,last:0,raf:0,mobile:false,w:1120,h:650,scale:1,loaded:false,playRequested:false,autoStarted:false,userPaused:false,resumeOnEnter:false,phase:'',frames:[],frameCount:0};
   const images={};
   const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
   const smooth=v=>{v=clamp(v);return v*v*v*(v*(v*6-15)+10);};
@@ -410,15 +410,22 @@
     const dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(width*dpr);canvas.height=Math.round(cssHeight*dpr);canvas.style.aspectRatio=state.w+'/'+state.h;state.scale=canvas.width/state.w;render();
   }
   function updateButton(){$('#rm-motion-play').textContent=state.playing?'Ⅱ Pause':'▶ Play';$('#rm-motion-play').setAttribute('aria-label',state.playing?'Pause animation':'Play animation');}
-  function pause(manual=true){state.playing=false;if(manual)state.userPaused=true;cancelAnimationFrame(state.raf);updateButton();}
+  function pause(manual=true){state.playing=false;if(manual){state.userPaused=true;state.playRequested=false;}cancelAnimationFrame(state.raf);updateButton();}
   function tick(timestamp){
     if(!state.playing)return;let dt=state.last?Math.min((timestamp-state.last)/1000,.08):0;state.last=timestamp;
     if(dt>0){state.frames.push(dt);if(state.frames.length>90)state.frames.shift();if(state.frameCount%20===0){canvas.dataset.fps=(state.frames.length/state.frames.reduce((a,b)=>a+b,0)).toFixed(1);const intervals=state.frames.slice().sort((a,b)=>a-b);canvas.dataset.frameP95=(intervals[Math.floor(intervals.length*.95)]*1000).toFixed(1);}}
     state.time=Math.min(duration,state.time+dt*baselineSpeed*state.speed);render();if(state.time>=duration){pause(false);return;}state.raf=requestAnimationFrame(tick);
   }
   function replay(){state.time=0;state.last=0;state.userPaused=false;render();play();}
-  function play(){if(!state.loaded)return;if(state.time>=duration){replay();return;}cancelAnimationFrame(state.raf);state.playing=true;state.userPaused=false;state.last=0;updateButton();state.raf=requestAnimationFrame(tick);}
+  function play(){if(!state.loaded){state.playRequested=true;return;}state.playRequested=false;if(state.time>=duration){replay();return;}cancelAnimationFrame(state.raf);state.playing=true;state.userPaused=false;state.last=0;updateButton();state.raf=requestAnimationFrame(tick);}
   $('#rm-motion-play').addEventListener('click',()=>state.playing?pause():play());$('#rm-motion-replay').addEventListener('click',replay);
+  document.querySelector('#watch-demo')?.addEventListener('click',event=>{
+    event.preventDefault();
+    const box=root.getBoundingClientRect(),offset=Math.max(24,(window.innerHeight-box.height)/2);
+    window.scrollTo({top:Math.max(0,window.scrollY+box.top-offset),behavior:reduced?'auto':'smooth'});
+    window.history.replaceState(null,'','#rm-motion');
+    root.focus({preventScroll:true});state.autoStarted=true;state.resumeOnEnter=false;replay();
+  });
   $('#rm-motion-time').addEventListener('input',e=>{pause();state.time=Number(e.target.value);render();});$('#rm-motion-speed').addEventListener('change',e=>{state.speed=Number(e.target.value);});
   new ResizeObserver(resize).observe(root);
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -426,6 +433,6 @@
   document.addEventListener('visibilitychange',()=>{if(document.hidden)pause(false);});
   const files={aerial:d.assets.aerial,pano:d.assets.panorama,depth:d.assets.depth};
   const loadImage=(key,priority)=>new Promise(resolve=>{const img=new Image();images[key]=img;img.decoding='async';img.fetchPriority=priority;img.onload=resolve;img.onerror=resolve;img.src=files[key];});
-  Promise.all([loadImage('aerial','high'),loadImage('pano','high')]).then(()=>{state.loaded=true;resize();if(!reduced&&!state.userPaused){const r=canvas.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0){state.autoStarted=true;play();}}loadImage('depth','low').then(render);});
+  Promise.all([loadImage('aerial','high'),loadImage('pano','high')]).then(()=>{state.loaded=true;resize();if(state.playRequested)play();else if(!reduced&&!state.userPaused){const r=canvas.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0){state.autoStarted=true;play();}}loadImage('depth','low').then(render);});
   resize();
 })();
