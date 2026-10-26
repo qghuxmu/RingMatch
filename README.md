@@ -13,3 +13,5 @@ The project website is in [`docs/`](docs/). The overview replays eight recorded 
 The website uses static HTML, CSS, and JavaScript, with no build step. GitHub Pages publishes the `docs/` directory on the `main` branch.
 
 To update the website, edit files in `docs/` and push changes to `main`.
+
+The depth-map previews are offline, direct full-panorama predictions from Depth Anything V2 Metric Outdoor Large. They illustrate the depth stage and are distinct from the recorded rings and verifier inputs. Crop guides retain the source-mosaic boundary shifts from the recorded run; when a child extends beyond its parent view, the replay briefly reveals surrounding mosaic context and marks the original input window with a dashed outline.
