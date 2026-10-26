@@ -85,7 +85,9 @@ main>section[id]:not(#overview){max-width:760px}
 .paper-action[aria-disabled="true"]{pointer-events:none;cursor:default}
 .paper-header .paper-links{gap:10px}
 .paper-header .paper-links>a,.paper-header .paper-links>button{min-width:112px;min-height:38px;padding:7px 16px}
+.paper-links .resource-status{display:inline-block;padding:3px 8px;border-radius:999px;background:#eef5e4;color:#627e42;font-size:9px;font-weight:500;line-height:1.4;letter-spacing:.05em;text-transform:uppercase;white-space:nowrap}
 #rm-motion:focus-visible{outline:2px solid #709151;outline-offset:5px}
 @media(max-width:540px){.paper-header h1{margin-bottom:21px}.paper-actions{gap:9px;margin-bottom:11px}.paper-action{min-height:44px;padding:10px 13px;gap:7px;font-size:13px}.paper-action svg{width:17px;height:17px}.paper-header .paper-links{gap:8px}.paper-header .paper-links>a,.paper-header .paper-links>button{min-width:0;flex:1;max-width:120px;padding:7px 12px}}
 @media(max-width:350px){.paper-actions{flex-direction:column}.paper-action{width:100%;max-width:260px}}
 @media(prefers-reduced-motion:reduce){.paper-action{transition:none}}
+@media(max-width:540px){.paper-header .paper-links>a,.paper-header .paper-links>button{flex:0 1 auto;max-width:none;gap:7px}}
