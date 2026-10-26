@@ -1,0 +1,13 @@
+.rm-motion{border:1px solid #dce3d5;border-radius:7px;background:#fff;overflow:hidden;margin-top:20px}
+.rm-motion-stage{width:100%;position:relative;background:#fff}
+#rm-motion-canvas{display:block;width:100%;height:auto;aspect-ratio:1120/650}
+.rm-motion-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.rm-motion-controls{display:flex;align-items:center;gap:12px;padding:10px 15px;background:#fafbf8;border-top:1px solid #e2e7dc;font-size:10px;color:#7b856f}
+.rm-motion-controls button,.rm-motion-controls select{font:inherit;border:1px solid #d4dfca;border-radius:4px;min-height:32px;background:#fff;color:#5a7148;padding:5px 9px}
+.rm-motion-controls button{cursor:pointer;min-width:32px;white-space:nowrap}
+#rm-motion-play{min-width:74px;background:#56763e;color:#fff;border-color:#56763e}
+#rm-motion-time{flex:1;min-width:70px;height:24px;accent-color:#6a8954;cursor:pointer}
+#rm-motion-clock{font-variant-numeric:tabular-nums;white-space:nowrap;font-size:10px}
+.rm-motion-sim{font-size:9px;white-space:nowrap;color:#939b88;margin-left:3px}
+.rm-motion-controls select{padding-inline:5px}
+@media(max-width:650px){#rm-motion-canvas{aspect-ratio:560/1450}.rm-motion-controls{gap:7px;padding:9px 10px;flex-wrap:wrap}.rm-motion-sim{font-size:8px;margin-left:auto}.rm-motion-controls button{padding-inline:7px}#rm-motion-play{min-width:65px}#rm-motion-clock{font-size:9px}}

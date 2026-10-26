@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>RingMatch | Beyond Local Refinement</title>
+<meta name="description" content="RingMatch: a search-and-verification framework for wide-area precise cross-view localization.">
+<link rel="stylesheet" href="style.css"><link rel="stylesheet" href="overview.css">
+<link rel="icon" href="data:,">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="page-header">
+  <nav aria-label="Page navigation"><a class="home-link" href="#" aria-label="RingMatch home">RingMatch</a><div class="nav-links"><a href="#overview">Overview</a><a href="#pilot">Pilot Study</a><a href="#method">Method</a><a href="#results">Results</a></div></nav>
+</header>
+<main id="main">
+<section class="paper-header" aria-labelledby="paper-title">
+  <h1 id="paper-title">Beyond Local Refinement:<br>Wide-Area Precise Cross-View Localization</h1>
+  <div class="paper-links" aria-label="Paper resources"><button type="button" disabled title="Paper"><svg xmlns="http://www.w3.org/2000/svg" aria-hidden="true" class="icon-arxiv" fill="#B31B1B" viewBox="0 0 24 24"><path d="M3.8423 0a1.0037 1.0037 0 0 0-.922.6078c-.1536.3687-.0438.6275.2938 1.1113l6.9185 8.3597-1.0223 1.1058a1.0393 1.0393 0 0 0 .003 1.4229l1.2292 1.3135-5.4391 6.4444c-.2803.299-.4538.823-.2971 1.1986a1.0253 1.0253 0 0 0 .9585.635.9133.9133 0 0 0 .6891-.3405l5.783-6.126 7.4902 8.0051a.8527.8527 0 0 0 .6835.2597.9575.9575 0 0 0 .8777-.6138c.1577-.377-.017-.7502-.306-1.1407l-7.0518-8.3418 1.0632-1.13a.9626.9626 0 0 0 .0089-1.3165L4.6336.4639s-.3733-.4535-.768-.463zm0 .272h.0166c.2179.0052.4874.2715.5644.3639l.005.006.0052.0055 10.169 10.9905a.6915.6915 0 0 1-.0072.945l-1.0666 1.133-1.4982-1.7724-8.5994-10.39c-.3286-.472-.352-.6183-.2592-.841a.7307.7307 0 0 1 .6704-.4401Zm14.341 1.5701a.877.877 0 0 0-.6554.2418l-5.6962 6.1584 1.6944 1.8319 5.3089-6.5138c.3251-.4335.479-.6603.3247-1.0292a1.1205 1.1205 0 0 0-.9763-.689zm-7.6557 12.2823 1.3186 1.4135-5.7864 6.1295a.6494.6494 0 0 1-.4959.26.7516.7516 0 0 1-.706-.4669c-.1119-.2682.0359-.6864.2442-.9083l.0051-.0055.0047-.0055z"/></svg><span>Paper</span></button><a href="https://github.com/qghuxmu/RingMatch" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#24292F" d="M12 .8a11.2 11.2 0 0 0-3.54 21.83c.56.1.77-.24.77-.54v-2.11c-3.13.68-3.79-1.33-3.79-1.33-.51-1.3-1.24-1.64-1.24-1.64-1.02-.7.08-.69.08-.69 1.13.08 1.72 1.16 1.72 1.16 1 1.71 2.62 1.22 3.26.93.1-.72.39-1.22.71-1.5-2.5-.29-5.13-1.26-5.13-5.58 0-1.23.44-2.24 1.16-3.02-.12-.29-.5-1.43.11-2.97 0 0 .95-.3 3.08 1.15a10.68 10.68 0 0 1 5.6 0c2.14-1.45 3.08-1.15 3.08-1.15.61 1.54.23 2.68.11 2.97.72.78 1.16 1.79 1.16 3.02 0 4.33-2.63 5.29-5.14 5.57.4.35.76 1.03.76 2.08v3.11c0 .3.2.65.77.54A11.2 11.2 0 0 0 12 .8Z"/></svg><span>Code</span></a><button type="button" disabled title="Model"><img class="resource-icon" src="assets/huggingface-color.svg" alt="" aria-hidden="true" width="20" height="20"><span>Model</span></button><button type="button" disabled title="Dataset"><svg class="icon-database" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#3B82A0" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg><span>Dataset</span></button></div>
+</section>
+
+<section id="overview" aria-labelledby="overview-title">
+  <h2 id="overview-title">Overview of RingMatch</h2>
+  <div class="rm-motion" id="rm-motion">
+    <div class="rm-motion-stage"><canvas id="rm-motion-canvas" aria-label="Animated RingMatch inference: simultaneous search branches, depth-ring construction, and candidate verification." role="img"></canvas><p class="rm-motion-sr" id="rm-motion-description" aria-live="polite"></p></div>
+    <div class="rm-motion-controls"><button type="button" id="rm-motion-play" aria-label="Play animation">▶ Play</button><input type="range" id="rm-motion-time" min="0" max="102" step="0.01" value="0" aria-label="Animation progress"><span id="rm-motion-clock">0:00 / 1:08</span><select id="rm-motion-speed" aria-label="Animation speed"><option value="1">1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select><button type="button" id="rm-motion-replay" aria-label="Replay animation">↻</button><span class="rm-motion-sim" title="Paper imagery with simulated search samples, ring values, scores and verifier probabilities.">Simulated data</span></div>
+  </div>
+</section>
+
+<section id="abstract" class="text-section">
+  <h2>Abstract</h2>
+  <div class="abstract-card">
+  <p>Fine-grained cross-view localization aims to precisely localize a ground camera against geo-referenced aerial imagery, but current methods typically assume a narrow geographic prior, substantially limiting their applicability when upstream localization remains coarse. To bridge this gap, we study this task over much larger aerial regions. However, this seemingly simple extension fundamentally changes the localization problem: the growing disparity in spatial extent between ground and aerial views makes reliable cross-view matching difficult to establish directly, while the increasing number of look-alike locations in larger regions introduces substantial visual ambiguity.</p>
+  <p>To address these challenges, we propose <strong>RingMatch</strong>, a search-and-verification framework for wide-area cross-view localization. RingMatch first leverages predictive uncertainty to uncover plausible locations and progressively zooms into their surroundings to obtain increasingly fine-grained evidence, yielding a compact set of promising candidates. We then introduce the <em>depth ring</em>, a novel geometric representation that reveals subtle variations in the spatial layout around a location and serves as a view-shared spatial signature for an LVLM verifier to resolve residual ambiguity.</p>
+  <p>To benchmark this setting, we construct VIGOR-Pro by composing VIGOR aerial tiles into contiguous regions with spatial extents of up to 400 m. Experiments show that RingMatch maintains strong localization performance as the aerial region expands, consistently outperforming representative end-to-end and retrieval-based methods.</p>
+  </div>
+</section>
+
+<section id="pilot" aria-labelledby="pilot-title">
+  <h2 id="pilot-title">Challenges of Wide-Area Cross-View Localization</h2>
+  <p class="section-description">Expanding the aerial region introduces two coupled challenges: sparse ground–aerial correspondences and visual ambiguity among look-alike locations.</p>
+  <figure class="challenge-figure paper-figure">
+    <button class="figure-button" data-image="assets/paper_challenges.png" aria-label="Enlarge the challenges figure"><img src="assets/paper_challenges.png" alt="Original paper figure: existing localization methods degrade as aerial extent increases; an aerial region contains ground-truth and look-alike locations with subtly different spatial layouts" width="1850" height="795" loading="lazy"></button>
+  </figure>
+  <div class="challenge-notes">
+    <article><h3>Sparse ground–aerial correspondences</h3><p>A ground panorama observes only the camera’s local surroundings. As the aerial extent grows, reliable cross-view evidence occupies a smaller, unknown part of the region, making direct localization increasingly difficult.</p></article>
+    <article><h3>Visual ambiguity in ground–aerial matching</h3><p>Recurring scene layouts create multiple plausible locations. Resolving them requires comparing subtle spatial differences across the ground–aerial viewpoint gap.</p></article>
+  </div>
+</section>
+
+<section id="method">
+  <h2>Method</h2>
+  <p class="section-description">Given a ground panorama and a geo-referenced aerial region containing the camera, RingMatch combines multi-hypothesis search with geometric verification. We consider the known-orientation setting: the panorama heading is known relative to the north-up aerial image.</p>
+  <div class="method-steps">
+    <article><span class="index">01</span><h3>Multi-hypothesis search</h3><p>Sample multiple coordinate predictions and cluster nearby predictions into hypotheses, preserving distinct plausible locations.</p></article>
+    <article><span class="index">02</span><h3>Branch-and-zoom</h3><p>Recursively narrow the region around each retained hypothesis to recover finer cross-view evidence. The default schedule is 400 → 200 → 100 → 50 m.</p></article>
+    <article><span class="index">03</span><h3>Depth-ring verification</h3><p>Compare the ground depth ring with predicted aerial rings. An LVLM verifier uses ring patterns and visual context to select the final candidate.</p></article>
+  </div>
+  <figure class="method-figure paper-figure">
+    <button class="figure-button" data-image="assets/method_framework.png" aria-label="Enlarge the method overview"><img src="assets/method_framework.png" alt="RingMatch overview: multi-hypothesis branch-and-zoom search followed by depth-ring-grounded verification" width="1800" height="707" loading="lazy"></button>
+  </figure>
+</section>
+
+<section id="depth-ring" aria-labelledby="depth-ring-title">
+  <h2 id="depth-ring-title">Depth Rings for Cross-View Matching</h2>
+  <p class="section-lead">A spatial signature that both views can share.</p>
+  <div class="depth-ring-intro">
+    <div class="depth-ring-definition">
+      <p>Search produces a shortlist of plausible locations, but look-alike candidates can remain difficult to distinguish. A <strong>depth ring</strong> records the estimated distance from a location to the first scene surface along each horizontal direction. Its profile captures fine-grained spatial structure around that location.</p>
+      <p>Ground and aerial rings express this structure in a shared, camera-centered representation. In the known-orientation setting, they share an azimuth reference and can be directly aligned.</p>
+    </div>
+    <figure class="depth-ring-concept paper-figure">
+      <button class="figure-button" data-image="assets/depth_ring.png" aria-label="Enlarge the depth ring construction figure"><img src="assets/depth_ring.png" alt="Depth ring construction from the paper: a horizon band in the panorama and estimated depth map produces a polar depth profile; the ground-derived ring is overlaid on an aerial patch for visualization" width="1800" height="1445" loading="lazy"></button>
+    </figure>
+  </div>
+  <div class="depth-ring-pipeline">
+    <article><span class="index">01</span><h3>Ground-to-ring</h3><p>Estimate metric depth from the panorama, then pool depth values within a narrow band around the horizon for each azimuth.</p></article>
+    <article><span class="index">02</span><h3>Aerial-to-ring</h3><p>Predict a ring from each candidate-centered aerial patch. Ground-derived rings from paired training data provide supervision, requiring no additional annotation.</p></article>
+  </div>
+<section id="qualitative" class="ring-comparisons" aria-labelledby="ring-comparisons-title">
+  <h3 id="ring-comparisons-title">Qualitative Comparisons</h3>
+  <p class="section-description">The ground depth ring is compared with predicted aerial rings at two candidate locations. Consistent profiles support the matching location, while differences in the surrounding layout reveal a look-alike.</p>
+  <div class="example-controls" role="group" aria-label="Qualitative example"><button type="button" class="selected" data-case="1175" aria-pressed="true">1</button><button type="button" data-case="1720" aria-pressed="false">2</button><button type="button" data-case="0538" aria-pressed="false">3</button><button type="button" data-case="0175" aria-pressed="false">4</button></div>
+  <figure class="example-figure paper-figure"><button class="figure-button" id="case-enlarge" data-image="assets/depth_ring_case_1175.png" aria-label="Enlarge the selected example"><img id="case-image" src="assets/depth_ring_case_1175.png" alt="Example 1: ground panorama, two aerial candidates and depth-ring comparisons from the paper" width="1800" height="1066" loading="lazy"></button></figure>
+</section>
+</section>
+
+<section id="results">
+  <h2>Main Results</h2>
+  <p class="section-description">Localization errors on VIGOR-Pro under same-area and cross-area evaluation. All experiments use the known-orientation setting. Mean and median errors are measured in meters; lower is better.</p>
+  <div class="result-controls"><div class="control-group"><span>Evaluation</span><div class="segmented" role="group" aria-label="Evaluation setting"><button type="button" data-setting="same" aria-pressed="false">Same-area</button><button type="button" data-setting="cross" class="selected" aria-pressed="true">Cross-area</button></div></div><div class="control-group"><span>Aerial extent</span><div class="segmented" role="group" aria-label="Aerial region extent"><button type="button" data-scale="100" aria-pressed="false">100 m</button><button type="button" data-scale="200" aria-pressed="false">200 m</button><button type="button" data-scale="400" class="selected" aria-pressed="true">400 m</button></div></div></div>
+  <div class="table-scroll"><table class="results-table" id="results-table"><caption id="table-caption">VIGOR-Pro · Cross-area · 400 m</caption><thead><tr><th scope="col">Approach</th><th scope="col">Method</th><th scope="col">Mean (m) ↓</th><th scope="col">Median (m) ↓</th></tr></thead></table></div>
+  <p id="result-summary" class="result-summary" aria-live="polite">At 400 m under cross-area evaluation, RingMatch achieves 19.81 m mean and 2.04 m median error, compared with 26.38 m and 4.78 m for Sample4Geo + FG².</p>
+  <p class="note">The 100, 200 and 400 m labels denote nominal aerial-region side lengths.</p>
+</section>
+
+<section id="zero-shot" aria-labelledby="zero-shot-title">
+  <h2 id="zero-shot-title">Zero-shot Cross-View Spatial Reasoning</h2>
+  <p class="section-description">Depth-ring evidence improves the candidate verification accuracy of GPT-5.6 Terra and Gemini-3.7 Flash for both aerial-region sizes, without task-specific fine-tuning. Evaluation uses VIGOR-Pro same-area verification samples.</p>
+  <div class="table-scroll zero-shot-scroll"><table class="zero-shot-table"><caption>Verification accuracy (%) ↑ · Same-area verification samples</caption><thead><tr><th scope="col">Model</th><th scope="col">Evidence</th><th scope="col">Fine-tuned</th><th scope="col">200 m</th><th scope="col">400 m</th></tr></thead>
+  <tbody class="reference-group">
+<tr><th scope="row">Random</th><td class="evidence-cell">Random choice</td><td class="ft-cell">-</td><td class="accuracy-cell"><span>50.00</span></td><td class="accuracy-cell"><span>50.00</span></td></tr>
+<tr><th scope="row">Ring-only</th><td class="evidence-cell">Ring correlation</td><td class="ft-cell">-</td><td class="accuracy-cell"><span>67.29</span></td><td class="accuracy-cell"><span>69.42</span></td></tr>
+  </tbody>
+  <tbody class="model-group">
+<tr><th scope="rowgroup" rowspan="2">GPT-5.6 Terra</th><td class="evidence-cell">Visual only</td><td class="ft-cell" rowspan="2">-</td><td class="accuracy-cell"><span>56.93</span></td><td class="accuracy-cell"><span>59.47</span></td></tr>
+<tr class="ring-evidence"><td class="evidence-cell">Visual + depth ring</td><td class="accuracy-cell"><span>67.58</span><small class="accuracy-gain">+10.65 pp</small></td><td class="accuracy-cell"><span>66.21</span><small class="accuracy-gain">+6.74 pp</small></td></tr>
+  </tbody>
+  <tbody class="model-group">
+<tr><th scope="rowgroup" rowspan="2">Gemini-3.7 Flash</th><td class="evidence-cell">Visual only</td><td class="ft-cell" rowspan="2">-</td><td class="accuracy-cell"><span>66.70</span></td><td class="accuracy-cell"><span>72.56</span></td></tr>
+<tr class="ring-evidence"><td class="evidence-cell">Visual + depth ring</td><td class="accuracy-cell"><span>69.92</span><small class="accuracy-gain">+3.22 pp</small></td><td class="accuracy-cell"><span>75.29</span><small class="accuracy-gain">+2.73 pp</small></td></tr>
+  </tbody>
+  <tbody class="fine-tuned-group">
+<tr><th scope="row">RingMatch</th><td class="evidence-cell">Visual + depth ring</td><td class="ft-cell">Yes</td><td class="accuracy-cell"><span>81.92</span></td><td class="accuracy-cell"><span>82.81</span></td></tr>
+  </tbody>
+  </table></div>
+</section>
+
+<section id="citation" aria-labelledby="citation-title">
+  <div class="citation-heading"><h2 id="citation-title">Citation</h2><div class="citation-actions"><button type="button" id="copy-citation">Copy BibTeX</button></div></div>
+  <div class="citation-card"><pre><code id="citation-code">@misc{ringmatch,
+  title = {Beyond Local Refinement: Wide-Area Precise Cross-View Localization}
+}
+</code></pre></div>
+  <p class="note citation-status" id="citation-status" role="status" aria-live="polite"></p>
+</section>
+
+</main>
+<footer><p>RingMatch · Wide-area cross-view localization</p><a href="#">Back to top</a></footer>
+<dialog id="image-dialog"><button type="button" class="dialog-close" aria-label="Close figure">×</button><img alt="Enlarged paper figure"></dialog>
+<script src="results-data.js"></script><script src="overview-trace.js"></script><script src="overview.js"></script><script src="app.js"></script>
+</body></html>
