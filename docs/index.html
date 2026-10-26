@@ -6,6 +6,8 @@
 <meta name="description" content="RingMatch: a search-and-verification framework for wide-area precise cross-view localization.">
 <link rel="stylesheet" href="style.css"><link rel="stylesheet" href="overview.css">
 <link rel="icon" href="data:,">
+<link rel="preload" as="image" href="assets/overview/search-aerial.webp" fetchpriority="high">
+<link rel="preload" as="image" href="assets/overview/search-panorama.webp" fetchpriority="high">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -39,7 +41,7 @@
   <h2 id="pilot-title">Challenges of Wide-Area Cross-View Localization</h2>
   <p class="section-description">Expanding the aerial region introduces two coupled challenges: sparse ground–aerial correspondences and visual ambiguity among look-alike locations.</p>
   <figure class="challenge-figure paper-figure">
-    <button class="figure-button" data-image="assets/paper_challenges.png" aria-label="Enlarge the challenges figure"><img src="assets/paper_challenges.png" alt="Original paper figure: existing localization methods degrade as aerial extent increases; an aerial region contains ground-truth and look-alike locations with subtly different spatial layouts" width="1850" height="795" loading="lazy"></button>
+    <button class="figure-button" data-image="assets/paper_challenges.png" aria-label="Enlarge the challenges figure"><img src="assets/paper_challenges.webp" alt="Original paper figure: existing localization methods degrade as aerial extent increases; an aerial region contains ground-truth and look-alike locations with subtly different spatial layouts" width="1850" height="795" loading="lazy" decoding="async"></button>
   </figure>
   <div class="challenge-notes">
     <article><h3>Sparse ground–aerial correspondences</h3><p>A ground panorama observes only the camera’s local surroundings. As the aerial extent grows, reliable cross-view evidence occupies a smaller, unknown part of the region, making direct localization increasingly difficult.</p></article>
@@ -56,7 +58,7 @@
     <article><span class="index">03</span><h3>Depth-ring verification</h3><p>Compare the ground depth ring with predicted aerial rings. An LVLM verifier uses ring patterns and visual context to select the final candidate.</p></article>
   </div>
   <figure class="method-figure paper-figure">
-    <button class="figure-button" data-image="assets/method_framework.png" aria-label="Enlarge the method overview"><img src="assets/method_framework.png" alt="RingMatch overview: multi-hypothesis branch-and-zoom search followed by depth-ring-grounded verification" width="1800" height="707" loading="lazy"></button>
+    <button class="figure-button" data-image="assets/method_framework.png" aria-label="Enlarge the method overview"><img src="assets/method_framework.webp" alt="RingMatch overview: multi-hypothesis branch-and-zoom search followed by depth-ring-grounded verification" width="1800" height="707" loading="lazy" decoding="async"></button>
   </figure>
 </section>
 
@@ -69,7 +71,7 @@
       <p>Ground and aerial rings express this structure in a shared, camera-centered representation. In the known-orientation setting, they share an azimuth reference and can be directly aligned.</p>
     </div>
     <figure class="depth-ring-concept paper-figure">
-      <button class="figure-button" data-image="assets/depth_ring.png" aria-label="Enlarge the depth ring construction figure"><img src="assets/depth_ring.png" alt="Depth ring construction from the paper: a horizon band in the panorama and estimated depth map produces a polar depth profile; the ground-derived ring is overlaid on an aerial patch for visualization" width="1800" height="1445" loading="lazy"></button>
+      <button class="figure-button" data-image="assets/depth_ring.png" aria-label="Enlarge the depth ring construction figure"><img src="assets/depth_ring.webp" alt="Depth ring construction from the paper: a horizon band in the panorama and estimated depth map produces a polar depth profile; the ground-derived ring is overlaid on an aerial patch for visualization" width="1800" height="1445" loading="lazy" decoding="async"></button>
     </figure>
   </div>
   <div class="depth-ring-pipeline">
@@ -80,7 +82,7 @@
   <h3 id="ring-comparisons-title">Qualitative Comparisons</h3>
   <p class="section-description">The ground depth ring is compared with predicted aerial rings at two candidate locations. Consistent profiles support the matching location, while differences in the surrounding layout reveal a look-alike.</p>
   <div class="example-controls" role="group" aria-label="Qualitative example"><button type="button" class="selected" data-case="1175" aria-pressed="true">1</button><button type="button" data-case="1720" aria-pressed="false">2</button><button type="button" data-case="0538" aria-pressed="false">3</button><button type="button" data-case="0175" aria-pressed="false">4</button></div>
-  <figure class="example-figure paper-figure"><button class="figure-button" id="case-enlarge" data-image="assets/depth_ring_case_1175.png" aria-label="Enlarge the selected example"><img id="case-image" src="assets/depth_ring_case_1175.png" alt="Example 1: ground panorama, two aerial candidates and depth-ring comparisons from the paper" width="1800" height="1066" loading="lazy"></button></figure>
+  <figure class="example-figure paper-figure"><button class="figure-button" id="case-enlarge" data-image="assets/depth_ring_case_1175.png" aria-label="Enlarge the selected example"><img id="case-image" src="assets/depth_ring_case_1175.webp" alt="Example 1: ground panorama, two aerial candidates and depth-ring comparisons from the paper" width="1800" height="1066" loading="lazy" decoding="async"></button></figure>
 </section>
 </section>
 
@@ -127,5 +129,5 @@
 </main>
 <footer><p>RingMatch · Wide-area cross-view localization</p><a href="#">Back to top</a></footer>
 <dialog id="image-dialog"><button type="button" class="dialog-close" aria-label="Close figure">×</button><img alt="Enlarged paper figure"></dialog>
-<script src="results-data.js"></script><script src="overview-trace.js"></script><script src="overview.js"></script><script src="app.js"></script>
+<script src="results-data.js"></script><script src="overview-trace.js?v=images-20261026"></script><script src="overview.js?v=images-20261026"></script><script src="app.js?v=images-20261026"></script>
 </body></html>

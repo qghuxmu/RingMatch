@@ -71,5 +71,5 @@
     return Math.max(6,Math.min(77,13+49*Math.exp(-Math.pow(Math.sin(a-.62)/.28,2))+7*Math.sin(a*3+1)+3*Math.cos(a*7)));
   });
   const rings={ground:ring,A:ring.map((v,i)=>Math.max(5,Math.min(79,20+38*Math.exp(-Math.pow(Math.sin((i*Math.PI/180)-1.35)/.30,2))+6*Math.cos(i/21)))),B:ring.map((v,i)=>Math.max(4,Math.min(79,v+3.4*Math.sin(i/13)+2*Math.cos(i/29))))};
-  window.RINGMATCH_TRACE={kind:'simulated',config,colors,nodes,byId,levels,candidates,rings,verification:{probabilities:{A:.17,B:.83},selected:'B',probabilityKind:'illustrative preference, not calibrated model output'},assets:{aerial:'assets/overview/search-aerial.jpg',panorama:'assets/overview/search-panorama.jpg',depth:'assets/overview/depth-map.png'}};
+  window.RINGMATCH_TRACE={kind:'simulated',config,colors,nodes,byId,levels,candidates,rings,verification:{probabilities:{A:.17,B:.83},selected:'B',probabilityKind:'illustrative preference, not calibrated model output'},assets:{aerial:'assets/overview/search-aerial.webp',panorama:'assets/overview/search-panorama.webp',depth:'assets/overview/depth-map.webp'}};
 })();

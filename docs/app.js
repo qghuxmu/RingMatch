@@ -50,10 +50,10 @@ qa('[data-setting]').forEach(b=>b.addEventListener('click',()=>{state.setting=b.
 qa('[data-scale]').forEach(b=>b.addEventListener('click',()=>{state.scale=b.dataset.scale;selectGroup('[data-scale]','scale',state.scale);renderResults();}));
 qa('[data-case]').forEach((b,i)=>b.addEventListener('click',()=>{
   qa('[data-case]').forEach(other=>{const active=other===b;other.classList.toggle('selected',active);other.setAttribute('aria-pressed',String(active));});
-  const src=`assets/depth_ring_case_${b.dataset.case}.png`;
+  const src=`assets/depth_ring_case_${b.dataset.case}.webp`;
   q('#case-image').src=src;
   q('#case-image').alt=`Example ${i+1}: ground panorama, aerial candidates and depth-ring comparisons from the paper`;
-  q('#case-enlarge').dataset.image=src;
+  q('#case-enlarge').dataset.image=`assets/depth_ring_case_${b.dataset.case}.png`;
 }));
 qa('[data-image]').forEach(b=>b.addEventListener('click',()=>{
   q('#image-dialog img').src=b.dataset.image;

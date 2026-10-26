@@ -425,6 +425,7 @@
   if('IntersectionObserver' in window)new IntersectionObserver(entries=>{const visible=entries[0].isIntersecting;if(!visible&&state.playing){state.resumeOnEnter=true;pause(false);}if(visible&&state.loaded&&!state.userPaused&&!reduced&&(!state.autoStarted||state.resumeOnEnter)){state.autoStarted=true;state.resumeOnEnter=false;play();}},{threshold:.12}).observe(canvas);
   document.addEventListener('visibilitychange',()=>{if(document.hidden)pause(false);});
   const files={aerial:d.assets.aerial,pano:d.assets.panorama,depth:d.assets.depth};
-  Promise.all(Object.entries(files).map(([key,url])=>new Promise(resolve=>{const img=new Image();images[key]=img;img.onload=resolve;img.onerror=resolve;img.src=url;}))).then(()=>{state.loaded=true;resize();if(!reduced&&!state.userPaused){const r=canvas.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0){state.autoStarted=true;play();}}});
+  const loadImage=(key,priority)=>new Promise(resolve=>{const img=new Image();images[key]=img;img.decoding='async';img.fetchPriority=priority;img.onload=resolve;img.onerror=resolve;img.src=files[key];});
+  Promise.all([loadImage('aerial','high'),loadImage('pano','high')]).then(()=>{state.loaded=true;resize();if(!reduced&&!state.userPaused){const r=canvas.getBoundingClientRect();if(r.top<innerHeight&&r.bottom>0){state.autoStarted=true;play();}}loadImage('depth','low').then(render);});
   resize();
 })();
