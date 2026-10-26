@@ -66,7 +66,7 @@ main>section[id]:not(#overview){max-width:760px}
 .citation-status:empty{display:none}
 
 /* v10: compact pilot figure and explicit fine-tuning column label. */
-.challenge-figure{width:100%;max-width:none;margin-inline:auto}
+.challenge-figure{width:100%;max-width:660px;margin-inline:auto}
 .challenge-figure .figure-button{width:100%;max-width:630px;margin-inline:auto}
 .zero-shot-table thead th:nth-child(1){width:150px}
 .zero-shot-table thead th:nth-child(2){width:175px}
