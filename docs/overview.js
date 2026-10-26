@@ -139,7 +139,25 @@
   function pool50Box(index,t,L){
     const initial=L.all50(index);
     const id=pool50Order[index],k=col50Order.indexOf(id);
-    return k<0?initial:rect(initial,L.col50(k),u(t,44,45.5));
+    return k<0?initial:rect(initial,rankedSearchBox(id,t,L),u(t,44,45.5));
+  }
+  function rankedSearchBox(id,t,L){
+    const original=L.col50(col50Order.indexOf(id));
+    const rank=d.candidates.findIndex(candidate=>candidate.parent===id);
+    if(rank<0)return original;
+    const targetFor=i=>state.mobile?{x:L.shortlist(i).x+10,y:1040,w:110}:{x:825,y:L.shortlist(i).y+12,w:96};
+    const target=targetFor(rank);
+    const progress=u(t,57.8,59.3),box=rect(original,target,progress);
+    // Separate the two trajectories while arranging the surviving branches by rank.
+    const origins=d.candidates.map(candidate=>L.col50(col50Order.indexOf(candidate.parent)));
+    const reversed=state.mobile?origins[0].x>origins[1].x:origins[0].y>origins[1].y;
+    const positions=origins.map((origin,i)=>rect(origin,targetFor(i),progress));
+    const distance=pair=>Math.abs(state.mobile?(pair[0].x+pair[0].w/2)-(pair[1].x+pair[1].w/2):(pair[0].y+pair[0].w/2)-(pair[1].y+pair[1].w/2));
+    const clearance=(positions[0].w+positions[1].w)/2;
+    const approach=Math.max(1,Math.min(64,distance(origins)-clearance,distance([targetFor(0),targetFor(1)])-clearance));
+    const lane=reversed?(rank===0?-1:1)*(clearance+12)/2*(1-smooth((distance(positions)-clearance)/approach)):0;
+    if(state.mobile)box.y+=lane;else box.x+=lane;
+    return box;
   }
   function survivorOutline(box,node,progress){
     withAlpha(progress,()=>{rounded({x:box.x-2,y:box.y-2,w:box.w+4,h:box.w+4},6);c.strokeStyle=family(node);c.lineWidth=2;c.stroke();});
@@ -147,11 +165,11 @@
   function leafScores(t,L){
     if(t<51)return;
     col50Order.forEach((id,index)=>{
-      const parent=n(id),b=L.col50(index);kids(id).forEach((leaf,j)=>{
+      const parent=n(id),b=rankedSearchBox(id,t,L);kids(id).forEach((leaf,j)=>{
         const source=mapPoint(leaf.p,b,parent.input);
         const siblings=kids(id),target=state.mobile?{x:b.x+b.w*(j+1)/(siblings.length+1),y:1180}:{x:958,y:b.y+17+j*Math.min(26,(b.w-10)/siblings.length)};
         const p=u(t,51+j*.12,52.5+j*.12),best=shortlistedIds.has(leaf.id),retention=u(t,55,56.3),rejected=best?0:retention;
-        const shortlistFade=u(t,58.9,59.3),alpha=p*(1-shortlistFade)*(1-rejected*.7),color=blend(family(leaf),'#c8cec0',rejected);
+        const shortlistFade=u(t,57.4,57.8),alpha=p*(1-shortlistFade)*(1-rejected*.7),color=blend(family(leaf),'#c8cec0',rejected);
         connection(source,target,p,color,mix(1.2,best?2:1,retention),{alpha:alpha*(1-rejected*.6)});
         withAlpha(alpha,()=>{
           circle(source.x,source.y,3.2,color,'white',1.4);
@@ -179,7 +197,7 @@
       const rejected=node.kept?0:u(t,41,42.5);
       return {node,parent,start,p,pb,target,box:cropRevealBox(target,p),rejected,alpha:p*(node.kept?1:1-u(t,44,45.5))};
     });
-    all50.forEach(o=>connection(mapPoint(o.node.p,o.pb,o.parent.input),{x:o.target.x,y:o.target.y+o.target.w/2},o.p,blend(family(o.node),'#cbd0c5',o.rejected),1.5,{alpha:o.alpha*(1-u(t,35.55,36)*(1-u(t,39.45,40.3)))}));
+    all50.forEach(o=>connection(mapPoint(o.node.p,o.pb,o.parent.input),{x:o.target.x,y:o.target.y+o.target.w/2},o.p,blend(family(o.node),'#cbd0c5',o.rejected),1.5,{alpha:o.alpha*(1-u(t,35.55,36)*(1-u(t,39.45,40.3)))*(1-u(t,57.4,57.8))}));
     cropImage(rootNode.input,L.root,'#c2ceb5',1,.15);
     samples(rootNode,L.root,2,6,t,{root:true});
     spawn200.forEach(o=>cropGuide(rootNode,o.node,L.root,o.box,200,o.start,t));
@@ -194,7 +212,8 @@
     all50.forEach(o=>cropGuide(o.parent,o.node,o.pb,o.box,50,o.start,t));
     all50.forEach(o=>{if(o.p<=0)return;const descendantsSurvive=d.candidates.some(candidate=>candidate.parent===o.node.id);
       const historyDim=o.node.kept&&!descendantsSurvive?u(t,55,56.3)*.62:0;
-      card(o.node,o.box,50,o.alpha,o.p,.09,Math.max(o.rejected,historyDim));if(o.node.kept){survivorOutline(o.box,o.node,u(t,41,42.5)*(1-u(t,46,47)));if(t>=46)withAlpha(1-historyDim,()=>samples(o.node,o.box,46,49,t,{shortlist:true}));}});
+      const rankingAlpha=descendantsSurvive?1:1-u(t,57.4,57.8);
+      withAlpha(rankingAlpha,()=>{card(o.node,o.box,50,o.alpha,o.p,.09,Math.max(o.rejected,historyDim));if(o.node.kept){survivorOutline(o.box,o.node,u(t,41,42.5)*(1-u(t,46,47)));if(t>=46)withAlpha(1-historyDim,()=>samples(o.node,o.box,46,49,t,{shortlist:true}));}});});
     // Draw after the image cards so each score line stays visible all the way to its centroid.
     leafScores(t,L);
   }
@@ -227,12 +246,13 @@
     d.candidates.forEach((candidate,index)=>{
       const appear=u(t,59.3+index*.15,61+index*.15);if(!appear)return;
       const b=patchBox(index,t,L),low=candidate.label===d.verification.selected?0:selection(t),bundle=evidenceLayout(t,L).bundle;
-      const parentNode=n(candidate.parent),parentBox=L.col50(col50Order.indexOf(candidate.parent));
-      // Matching source badges identify the shortlisted points without crossing leader lines.
+      const parentNode=n(candidate.parent),parentBox=rankedSearchBox(candidate.parent,t,L);
+      const point=mapPoint(candidate.p,parentBox,parentNode.input),flow=u(t,59.3+index*.15,60.6+index*.15);
+      const target=state.mobile?{x:b.x+b.w/2,y:b.y-8}:{x:b.x-8,y:b.y+b.w/2};
+      arrow(point,target,flow,family(candidate),1-u(t,63.3,64),state.mobile);
       withAlpha(appear*(1-u(t,63.3,64)),()=>{
-        const point=mapPoint(candidate.p,parentBox,parentNode.input);
         circle(point.x,point.y,8,null,family(candidate),2.2);
-        pill(candidate.label,point.x+15,point.y+23,family(candidate),11);
+        pill(candidate.label,parentBox.x+parentBox.w-12,parentBox.y+18,family(candidate),11);
       });
       patchImage(candidate,b,blend(family(candidate),'#aeb7a6',low),appear*(1-low*.55),.02+low*.30);
       withAlpha(appear*(1-low*.72),()=>{
@@ -297,7 +317,7 @@
     return {
       board:{x:24,y:62,w:490,h:560},pano:{x:44,y:119,w:450,h:100},context:{x:50,y:327,w:140},
       patches:[{x:212,y:289,w:120},{x:362,y:289,w:120}],plots:[{x:272,y:525,r:65},{x:422,y:525,r:65}],
-      model:{x:555,y:301,w:136,h:88},rows:[{x:750,y:141,w:328,h:54},{x:750,y:211,w:328,h:54}],
+      model:{x:555,y:159,w:136,h:88},rows:[{x:750,y:141,w:328,h:54},{x:750,y:211,w:328,h:54}],
       map:{x:770,y:322,w:288},outputTitle:{x:750,y:111}
     };
   }
@@ -311,8 +331,8 @@
       circle(point.x,point.y,large?(selected?7:5):3.7,color,'#fff',large?2.3:1.2);
       if(selected)circle(point.x,point.y,large?14:8,null,color,large?3:1.2);
       if(large){
-        const left=point.x>box.x+box.w-45;
-        mapLabel(candidate.label,point.x+(left?-21:21),point.y+19,color,left?'right':'left',selected?16:14);
+        const offset=selected?21:9,left=point.x>box.x+box.w-(selected?45:28);
+        mapLabel(candidate.label,point.x+(left?-offset:offset),clamp(point.y+(selected?19:-7),box.y+15,box.y+box.w-4),color,left?'right':'left',selected?16:14);
       }else text(candidate.label,point.x+8,point.y-6,10,color,'left',600);
     });
   }
