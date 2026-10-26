@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 2,
+  "cases": [
+    {
+      "id": "case-01",
+      "city": "San Francisco",
+      "scene": "Neighborhood",
+      "label": "01 \u00b7 San Francisco \u2014 Neighborhood",
+      "path": "assets/cases/case-01/trace.json"
+    },
+    {
+      "id": "case-02",
+      "city": "New York",
+      "scene": "Park",
+      "label": "02 \u00b7 New York \u2014 Park",
+      "path": "assets/cases/case-02/trace.json"
+    },
+    {
+      "id": "case-03",
+      "city": "Chicago",
+      "scene": "Industrial area",
+      "label": "03 \u00b7 Chicago \u2014 Industrial area",
+      "path": "assets/cases/case-03/trace.json"
+    },
+    {
+      "id": "case-04",
+      "city": "Seattle",
+      "scene": "Residential streets",
+      "label": "04 \u00b7 Seattle \u2014 Residential streets",
+      "path": "assets/cases/case-04/trace.json"
+    },
+    {
+      "id": "case-05",
+      "city": "Chicago",
+      "scene": "Warehouse",
+      "label": "05 \u00b7 Chicago \u2014 Warehouse",
+      "path": "assets/cases/case-05/trace.json"
+    },
+    {
+      "id": "case-06",
+      "city": "Seattle",
+      "scene": "Highway",
+      "label": "06 \u00b7 Seattle \u2014 Highway",
+      "path": "assets/cases/case-06/trace.json"
+    },
+    {
+      "id": "case-07",
+      "city": "New York",
+      "scene": "City blocks",
+      "label": "07 \u00b7 New York \u2014 City blocks",
+      "path": "assets/cases/case-07/trace.json"
+    },
+    {
+      "id": "case-08",
+      "city": "San Francisco",
+      "scene": "Urban streets",
+      "label": "08 \u00b7 San Francisco \u2014 Urban streets",
+      "path": "assets/cases/case-08/trace.json"
+    }
+  ]
+}

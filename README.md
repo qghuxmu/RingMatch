@@ -6,7 +6,7 @@
 
 RingMatch is a search-and-verification framework for wide-area cross-view localization. It combines multi-hypothesis branch-and-zoom search with depth-ring-grounded candidate verification.
 
-The project website is in [`docs/`](docs/). The overview animation uses illustrative search samples, depth rings, scores, and verifier probabilities, as indicated in the demo.
+The project website is in [`docs/`](docs/). The overview replays eight recorded same-area inference cases from four cities, using the experiment configuration (M=16, B=4). The replay preserves sampled coordinates, clusters, crop bounds, search path scores, depth-ring values, and LVLM decisions. Case data and compressed images load on demand. Verifier probabilities are shown only when present in the recording.
 
 ## Website
 
