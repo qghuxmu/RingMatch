@@ -212,8 +212,6 @@
     const V=evidenceLayout(t,L),b=rect(L.pano,V.pano,u(t,64,66));
     text('Ground panorama',b.x,b.y-12,state.mobile?15:12,'#738466');
     c.save();rounded(b,4);c.clip();imageIn(images.pano,b,{cover:true});c.restore();
-    const band=u(t,68.8,70)*(1-u(t,79.5,80.5));
-    withAlpha(band,()=>{const h=state.mobile?7:5,y=horizonY(images.pano,b);c.fillStyle='rgba(224,255,151,.24)';c.fillRect(b.x,y-h/2,b.w,h);c.strokeStyle='#ddf3ad';c.lineWidth=1.4;c.strokeRect(b.x,y-h/2,b.w,h);});
     return b;
   }
   function patchImage(candidate,box,color=family(candidate),opacity=1,dim=0){
