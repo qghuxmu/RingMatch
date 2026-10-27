@@ -17,7 +17,7 @@
   const rect=(a,b,p)=>({x:mix(a.x,b.x,p),y:mix(a.y,b.y,p),w:mix(a.w,b.w,p),h:mix(a.h??a.w,b.h??b.w,p)});
   const n=id=>d.byId[id];
   const kids=id=>d.nodes.filter(node=>node.parent===id);
-  const family=node=>node.id==='root'?'#7b8c6a':node.label?(node.label==='A'?palette[0]:palette[1]):palette[node.familyIndex%palette.length];
+  const family=node=>node.id==='root'?'#7b8c6a':palette[node.familyIndex%palette.length];
   const score=value=>String(Math.round(value));
   const chosen=label=>d.candidates.find(x=>x.label===label);
   let shortlistedIds=new Set(d.candidates.map(candidate=>candidate.id));
@@ -55,8 +55,6 @@
     kept100Order=column100Order.filter(id=>n(id).kept);
     pool50Order=kept100Order.flatMap(id=>kids(id).map(node=>node.id));
     col50Order=pool50Order.filter(id=>n(id).kept);
-    // Keep the source layout order; A/B and search ranks remain the recorded labels.
-    d.candidates.sort((a,b)=>col50Order.indexOf(a.parent)-col50Order.indexOf(b.parent)||a.p[1]-b.p[1]||a.p[0]-b.p[0]);
   }
   updateOrders();
   function searchView(node,t=state.time){
@@ -217,9 +215,9 @@
     return b;
   }
   function patchImage(candidate,box,color=family(candidate),opacity=1,dim=0){
-    const img=images[candidate.label==='A'?'cropA':'cropB'];
-    if(!img?.naturalWidth){cropImage(candidate.crop,box,color,opacity,dim);return;}
-    withAlpha(opacity,()=>{c.save();rounded(box,5);c.clip();imageIn(img,box);c.fillStyle=`rgba(20,30,14,${dim})`;c.fillRect(box.x,box.y,box.w,box.h??box.w);c.restore();rounded(box,5);c.strokeStyle=color;c.lineWidth=1.35;c.stroke();});
+    cropImage(candidate.crop,box,color,opacity,dim);
+    const point=mapPoint(candidate.p,box,candidate.crop);
+    withAlpha(opacity,()=>circle(point.x,point.y,box.w<60?1.8:2.8,color,'#fff',.9));
   }
   function horizonY(img,box){
     if(!img?.naturalWidth)return box.y+box.h/2;
@@ -396,7 +394,7 @@
     const panoBox=rect(source.pano,V.pano,assembly),contextBox=V.context;
     panoramaImage(panoBox);text('Ground panorama',panoBox.x,panoBox.y-12,state.mobile?14:12,'#738466');
     withAlpha(u(t,81.2,82.5),()=>{
-      if(images.context?.naturalWidth){c.save();rounded(contextBox,4);c.clip();imageIn(images.context,contextBox);c.restore();}else cropImage({x:0,y:0,w:1},contextBox,'#c6d0bc',1,.03);
+      cropImage({x:0,y:0,w:1},contextBox,'#c6d0bc',1,.03);
       text('Aerial context',contextBox.x,contextBox.y-12,state.mobile?13:11,'#738466');
       d.candidates.forEach(candidate=>candidateMarker(candidate,contextBox,{opacity:candidate.label===winner.label?1:1-select*.55}));
     });
@@ -541,7 +539,7 @@
     d=trace;images=nextImages;updateOrders();state.loaded=true;state.time=0;state.last=0;state.phase='';state.userPaused=false;state.resumeOnEnter=false;selector.value=trace.id;controlsLoading(false);updateButton();resize();
     canvas.dataset.caseId=trace.id;
     if(state.playRequested)play();
-    ['depth','cropA','cropB','context'].forEach(key=>loadImage(key,'low').then(()=>{if(version===loadVersion){images=nextImages;render();}}));
+    ['depth'].forEach(key=>loadImage(key,'low').then(()=>{if(version===loadVersion){images=nextImages;render();}}));
   }
   async function switchCase(id){
     const version=++loadVersion;pause(false);state.playRequested=false;state.loaded=false;controlsLoading(true);

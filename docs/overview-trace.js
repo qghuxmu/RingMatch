@@ -61,12 +61,20 @@ function adapt(record) {
   const levels = record.search.levels.map((level,index)=>({extent:config.schedule[index],
     inputs:record.search.requests.filter(q=>q.round===index).map(q=>q.parent_id==='R'?'root':q.parent_id),
     children:level.ranked,ranking:level.ranked,kept:level.retained}));
-  const candidates = record.shortlist.map(candidate => ({...byId[candidate.node_id],label:candidate.label,
+  const column100=nodes.filter(node=>node.parent==='root'&&node.kept).flatMap(parent=>nodes.filter(node=>node.parent===parent.id));
+  const column50=column100.filter(node=>node.kept).flatMap(parent=>nodes.filter(node=>node.parent===parent.id&&node.kept)).map(node=>node.id);
+  const candidates = record.shortlist.map(candidate => ({...byId[candidate.node_id],sourceLabel:candidate.label,
     searchRank:candidate.search_rank,crop:{x:candidate.pixel_box[0]/sourceWidth,y:candidate.pixel_box[1]/record.sourceSize[1],
-      w:(candidate.pixel_box[2]-candidate.pixel_box[0])/sourceWidth,h:(candidate.pixel_box[3]-candidate.pixel_box[1])/record.sourceSize[1]}})).sort((a,b)=>a.searchRank-b.searchRank);
+      w:(candidate.pixel_box[2]-candidate.pixel_box[0])/sourceWidth,h:(candidate.pixel_box[3]-candidate.pixel_box[1])/record.sourceSize[1]}}))
+    .sort((a,b)=>column50.indexOf(a.parent)-column50.indexOf(b.parent)||a.p[1]-b.p[1]||a.p[0]-b.p[0]);
+  candidates.forEach((candidate,index)=>{candidate.label=index===0?'A':'B';});
+  const displayRings={ground:smoothRing(record.rings.ground)};
+  candidates.forEach(candidate=>{displayRings[candidate.label]=smoothRing(record.rings[candidate.sourceLabel]);});
+  const verification={...record.verification,sourceSelected:record.verification.selected,
+    selected:candidates.find(candidate=>candidate.sourceLabel===record.verification.selected).label,
+    probabilities:record.verification.probabilities?Object.fromEntries(candidates.map(candidate=>[candidate.label,record.verification.probabilities[candidate.sourceLabel]])):null};
   return {kind:'recorded',id:record.id,city:record.city,scene:record.scene,config,nodes,byId,levels,candidates,
-    rings:record.rings,displayRings:Object.fromEntries(Object.entries(record.rings).map(([key,values])=>[key,smoothRing(values)])),
-    groundTruth:record.groundTruth,verification:record.verification,assets:record.assets};
+    rings:record.rings,displayRings,groundTruth:record.groundTruth,verification,assets:record.assets};
 }
 window.RINGMATCH_CASES = manifest;
 const cache = new Map([[initial.id,adapt(initial)]]);
