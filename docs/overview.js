@@ -5,7 +5,7 @@
   const root=document.querySelector('#rm-motion');
   if(!d||!root)return;
   const canvas=root.querySelector('canvas'),c=canvas.getContext('2d',{alpha:false});
-  const $=s=>root.querySelector(s),duration=102,baselineSpeed=2.25;
+  const $=s=>root.querySelector(s),duration=102,baselineSpeed=1.6875;
   const palette=['#d58b30','#238ac2','#aa70b4'];
   const state={time:0,playing:false,last:0,raf:0,mobile:false,w:1120,h:650,scale:1,loaded:false,playRequested:false,userPaused:false,resumeOnEnter:false,phase:'',frames:[],frameCount:0};
   let images={};
