@@ -19,6 +19,10 @@
   const kids=id=>d.nodes.filter(node=>node.parent===id);
   const family=node=>node.id==='root'?'#7b8c6a':palette[node.familyIndex%palette.length];
   const score=value=>String(Math.round(value));
+  const probabilityText=value=>{
+    const percent=value*100;
+    return percent>0&&percent<.01?'<0.01%':percent>99.99&&percent<100?'>99.99%':percent.toFixed(2)+'%';
+  };
   const chosen=label=>d.candidates.find(x=>x.label===label);
   let shortlistedIds=new Set(d.candidates.map(candidate=>candidate.id));
   function region(node,extent){const w=extent/400;return {x:clamp(node.p[0]-w/2,0,1-w),y:clamp(node.p[1]-w/2,0,1-w),w};}
@@ -445,7 +449,7 @@
         withAlpha(probability,()=>{
           const p=d.verification.probabilities?.[candidate.label];
           if(Number.isFinite(p)){
-            text(Math.round(p*100)+'%',right,row.y+23,state.mobile?16:15,color,'right',600);
+            text(probabilityText(p),right,row.y+23,state.mobile?16:15,color,'right',600);
             rounded({x:left,y:row.y+row.h-19,w:barWidth,h:5},2.5);c.fillStyle='#e6ebdf';c.fill();
             rounded({x:left,y:row.y+row.h-19,w:Math.max(.1,barWidth*p*probability),h:5},2.5);c.fillStyle=color;c.fill();
           }else text(selected?'Selected':'Not selected',right,row.y+33,state.mobile?13:12,selected?color:'#939c8a','right',selected?550:400);
