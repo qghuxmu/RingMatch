@@ -55,6 +55,8 @@
     kept100Order=column100Order.filter(id=>n(id).kept);
     pool50Order=kept100Order.flatMap(id=>kids(id).map(node=>node.id));
     col50Order=pool50Order.filter(id=>n(id).kept);
+    // Keep the source layout order; A/B and search ranks remain the recorded labels.
+    d.candidates.sort((a,b)=>col50Order.indexOf(a.parent)-col50Order.indexOf(b.parent)||a.p[1]-b.p[1]||a.p[0]-b.p[0]);
   }
   updateOrders();
   function searchView(node,t=state.time){
@@ -236,6 +238,12 @@
         c.fillRect(box.x,bottom,box.w,box.y+box.h-bottom);
         c.fillStyle='rgba(224,255,151,.24)';c.fillRect(box.x,top,box.w,height);
         c.strokeStyle='#ddf3ad';c.lineWidth=1.6;c.strokeRect(box.x,top,box.w,height);
+        const extraction=u(state.time,70.5,75);
+        if(extraction>0&&extraction<1){
+          const scanX=box.x+box.w*extraction;
+          c.fillStyle='rgba(239,255,198,.32)';c.fillRect(Math.max(box.x,scanX-5),top,Math.min(10,box.x+box.w-Math.max(box.x,scanX-5)),height);
+          c.strokeStyle='#f4ffd5';c.lineWidth=2.2;c.beginPath();c.moveTo(scanX,y-height*1.7);c.lineTo(scanX,y+height*1.7);c.stroke();
+        }
       });
       c.restore();
     });
@@ -281,8 +289,15 @@
     const V=evidenceLayout(t,L),fade=u(t,64,66);if(!fade)return;
     text('Depth-ring verification',24,27,15,'#3d5132','left',550);
     depthFlow(t,V);groundDepth(V,u(t,67.25,68.5));
-    const extraction=u(t,70.5,74),groundAlpha=u(t,70.5,71.2);
+    const extraction=u(t,70.5,75),groundAlpha=u(t,70.5,71.2);
     withAlpha(groundAlpha,()=>{plotAxes(V.ring);ring(d.displayRings.ground,V.ring,'#343f2d',extraction,2.1);text('Ground ring',V.ring.x,V.ring.y+V.ring.r+27,state.mobile?15:12,'#596e48','center',500);});
+    if(extraction>0&&extraction<1){
+      const phi=Math.floor(extraction*359),angle=phi*Math.PI/180;
+      withAlpha(groundAlpha,()=>{
+        c.beginPath();c.moveTo(V.ring.x,V.ring.y);c.lineTo(V.ring.x+Math.sin(angle)*V.ring.r,V.ring.y-Math.cos(angle)*V.ring.r);c.strokeStyle='#93aa78';c.lineWidth=1;c.stroke();
+        dotAtRing(d.displayRings.ground,V.ring,phi,'#56763e');
+      });
+    }
     aerialPredictor(t,V);
     const ringStart=u(t,75.2,78.2);
     V.plots.forEach((plot,index)=>{
