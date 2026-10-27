@@ -61,8 +61,10 @@ function adapt(record) {
   const levels = record.search.levels.map((level,index)=>({extent:config.schedule[index],
     inputs:record.search.requests.filter(q=>q.round===index).map(q=>q.parent_id==='R'?'root':q.parent_id),
     children:level.ranked,ranking:level.ranked,kept:level.retained}));
-  const column100=nodes.filter(node=>node.parent==='root'&&node.kept).flatMap(parent=>nodes.filter(node=>node.parent===parent.id));
-  const column50=column100.filter(node=>node.kept).flatMap(parent=>nodes.filter(node=>node.parent===parent.id&&node.kept)).map(node=>node.id);
+  // Order each family by the source point's vertical position, preserving parent groups.
+  const orderedChildren=id=>nodes.filter(node=>node.parent===id).sort((a,b)=>a.p[1]-b.p[1]||a.p[0]-b.p[0]||a.id.localeCompare(b.id));
+  const column100=orderedChildren('root').filter(node=>node.kept).flatMap(parent=>orderedChildren(parent.id));
+  const column50=column100.filter(node=>node.kept).flatMap(parent=>orderedChildren(parent.id).filter(node=>node.kept)).map(node=>node.id);
   const candidates = record.shortlist.map(candidate => ({...byId[candidate.node_id],sourceLabel:candidate.label,
     searchRank:candidate.search_rank,crop:{x:candidate.pixel_box[0]/sourceWidth,y:candidate.pixel_box[1]/record.sourceSize[1],
       w:(candidate.pixel_box[2]-candidate.pixel_box[0])/sourceWidth,h:(candidate.pixel_box[3]-candidate.pixel_box[1])/record.sourceSize[1]}}))

@@ -16,7 +16,7 @@
   const blend=(a,b,p)=>'#'+[1,3,5].map(i=>Math.round(mix(parseInt(a.slice(i,i+2),16),parseInt(b.slice(i,i+2),16),p)).toString(16).padStart(2,'0')).join('');
   const rect=(a,b,p)=>({x:mix(a.x,b.x,p),y:mix(a.y,b.y,p),w:mix(a.w,b.w,p),h:mix(a.h??a.w,b.h??b.w,p)});
   const n=id=>d.byId[id];
-  const kids=id=>d.nodes.filter(node=>node.parent===id);
+  const kids=id=>d.nodes.filter(node=>node.parent===id).sort((a,b)=>a.p[1]-b.p[1]||a.p[0]-b.p[0]||a.id.localeCompare(b.id));
   const family=node=>node.id==='root'?'#7b8c6a':palette[node.familyIndex%palette.length];
   const score=value=>String(Math.round(value));
   const probabilityText=value=>{
