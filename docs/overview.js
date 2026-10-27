@@ -228,10 +228,16 @@
     const box=V.depth;
     withAlpha(opacity,()=>{
       text('Depth map',box.x,box.y-12,state.mobile?15:12,'#738466');
-      c.save();rounded(box,4);c.clip();imageIn(images.depth,box,{cover:true});c.restore();
-      withAlpha(u(state.time,68.8,70)*(1-u(state.time,79.5,80.5)),()=>{
-        const height=state.mobile?7:5,y=horizonY(images.depth,box);c.fillStyle='rgba(224,255,151,.3)';c.fillRect(box.x,y-height/2,box.w,height);c.strokeStyle='#ddf3ad';c.lineWidth=1.6;c.strokeRect(box.x,y-height/2,box.w,height);
+      c.save();rounded(box,4);c.clip();imageIn(images.depth,box,{cover:true});
+      withAlpha(u(state.time,68.8,70),()=>{
+        const height=state.mobile?7:5,y=horizonY(images.depth,box),top=y-height/2,bottom=y+height/2;
+        c.fillStyle='rgba(16,25,20,.62)';
+        c.fillRect(box.x,box.y,box.w,top-box.y);
+        c.fillRect(box.x,bottom,box.w,box.y+box.h-bottom);
+        c.fillStyle='rgba(224,255,151,.24)';c.fillRect(box.x,top,box.w,height);
+        c.strokeStyle='#ddf3ad';c.lineWidth=1.6;c.strokeRect(box.x,top,box.w,height);
       });
+      c.restore();
     });
   }
   function plotAxes(center,alpha=1){withAlpha(alpha,()=>{[.25,.5,.75,1].forEach(k=>circle(center.x,center.y,center.r*k,null,'#e0e7da',.8));c.strokeStyle='#e3e9dd';c.lineWidth=.7;c.beginPath();c.moveTo(center.x-center.r,center.y);c.lineTo(center.x+center.r,center.y);c.moveTo(center.x,center.y-center.r);c.lineTo(center.x,center.y+center.r);c.stroke();});}
