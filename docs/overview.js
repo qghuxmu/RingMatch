@@ -297,18 +297,18 @@
       });
     }
     aerialPredictor(t,V);
-    const ringStart=u(t,75.2,78.2);
+    const ringStart=u(t,77.2,80.2);
     V.plots.forEach((plot,index)=>{
-      const candidate=d.candidates[index],col=family(candidate),appear=u(t,75+index*.18,75.8+index*.18);
+      const candidate=d.candidates[index],col=family(candidate),appear=u(t,77.1+index*.1,77.7+index*.1);
       withAlpha(appear,()=>{plotAxes(plot);ring(d.displayRings[candidate.label],plot,col,ringStart,2.5);text('Aerial ring '+candidate.label,plot.x,plot.y+plot.r+27,state.mobile?15:12,'#596e48','center',500);});
     });
   }
   function aerialPredictor(t,V){
-    const box=V.predictor,show=u(t,71.5,72.5);
+    const box=V.predictor,show=u(t,75.2,75.8);
     V.patches.forEach((patch,index)=>{
       const plot=V.plots[index],color=family(d.candidates[index]);
-      arrow({x:patch.x+patch.w/2,y:patch.y+patch.w+10},{x:plot.x,y:box.y-6},u(t,72.5,73.8),color,1,true);
-      arrow({x:plot.x,y:box.y+box.h+6},{x:plot.x,y:plot.y-plot.r-10},u(t,74,75.2),color,1,true);
+      arrow({x:patch.x+patch.w/2,y:patch.y+patch.w+10},{x:plot.x,y:box.y-6},u(t,75.8,76.5),color,1,true);
+      arrow({x:plot.x,y:box.y+box.h+6},{x:plot.x,y:plot.y-plot.r-10},u(t,76.5,77.2),color,1,true);
     });
     withAlpha(show,()=>{
       rounded(box,6);c.fillStyle='#f7faf3';c.fill();c.strokeStyle='#c4d2b8';c.lineWidth=1.2;c.stroke();
