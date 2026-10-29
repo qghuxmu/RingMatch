@@ -11,20 +11,6 @@
 .method-steps article{transition:border-color 180ms}
 .method-steps article.is-active{border-top-color:#65834e}
 .method-steps article.is-active .method-step-trigger{color:#41682b;text-decoration-color:#65834e}
-.figure-hotspot{position:absolute;display:block;border:0;margin:0;padding:0;background:transparent;border-radius:3px;cursor:pointer;touch-action:manipulation}
-.figure-hotspot:focus-visible{outline:2px solid #476f35;outline-offset:2px}
-.label-hotspot{min-height:24px;border-bottom:1px dotted #6e927477;transition:background-color 180ms,border-color 180ms}
-.label-hotspot.is-active{background:#3f805413;border-bottom-color:#467c5b}
-.point-hotspot{width:25px;height:25px;transform:translate(-50%,-50%);border-radius:50%}
-.depth-overlay .feature-halo,.depth-overlay .feature-trace{fill:none;stroke-linecap:round;stroke-linejoin:round;vector-effect:non-scaling-stroke}
-.depth-overlay .feature-halo{stroke:#fff;stroke-width:6;stroke-opacity:.9}
-.depth-overlay .feature-trace{stroke:#287259;stroke-width:2.7}
-.depth-overlay .feature-point{fill:#fff;fill-opacity:.25;stroke:#287259;stroke-width:2;vector-effect:non-scaling-stroke}
-.challenge-overlay .linked-region{color:#357ba0}
-.challenge-overlay [data-link-region="gt"]{color:#ba6917}
-.challenge-overlay [data-link-region="b"]{color:#b565a3}
-.challenge-overlay rect{fill:currentColor;fill-opacity:.07;stroke:currentColor;stroke-width:2;vector-effect:non-scaling-stroke;paint-order:stroke fill}
-.crop-hotspot.is-active{outline:1px solid #fff;outline-offset:-2px}
 
 /* Keep the frame and comparison positions stable while changing examples. */
 .example-figure .figure-button{position:relative;aspect-ratio:1800/1066;isolation:isolate;overflow:hidden}
@@ -42,6 +28,6 @@ dialog.is-closing::backdrop{animation:figure-backdrop-out 130ms ease-in both}
 @keyframes figure-backdrop-in{from{background:#242b2400}to{background:#242b24cf}}
 @keyframes figure-backdrop-out{from{background:#242b24cf}to{background:#242b2400}}
 @media(prefers-reduced-motion:reduce){
-  .linked-region,.method-step-trigger,.method-steps article,.label-hotspot,.example-controls button,.segmented button{transition:none}
+  .linked-region,.method-step-trigger,.method-steps article,.example-controls button,.segmented button{transition:none}
   dialog[open]::backdrop,dialog.is-closing::backdrop{animation:none}
 }

@@ -5,7 +5,7 @@
 <title>RingMatch | Beyond Local Refinement</title>
 <meta name="description" content="RingMatch: a search-and-verification framework for wide-area precise cross-view localization.">
 <link rel="stylesheet" href="style.css?v=navigation-20261026"><link rel="stylesheet" href="overview.css?v=replay-controls-20261027">
-<link rel="stylesheet" href="enhancements.css?v=page-motion-20261029">
+<link rel="stylesheet" href="enhancements.css?v=scroll-reveal-20261029">
 <link rel="icon" href="data:,">
 <link rel="preload" as="image" href="assets/cases/case-01/aerial.webp" fetchpriority="high">
 <link rel="preload" as="image" href="assets/cases/case-01/pano.webp" fetchpriority="high">
@@ -49,23 +49,6 @@
   <figure class="challenge-figure paper-figure" id="challenge-figure">
     <div class="figure-stage">
     <button class="figure-button" data-image="assets/paper_challenges.png" aria-label="Enlarge the challenges figure"><img src="assets/paper_challenges.webp" alt="Original paper figure: existing localization methods degrade as aerial extent increases; an aerial region contains ground-truth and look-alike locations with subtly different spatial layouts" width="1850" height="795" loading="lazy" decoding="async"></button>
-<svg class="figure-overlay challenge-overlay" viewBox="0 0 1850 795" aria-hidden="true">
-<g class="linked-region" opacity="0" data-link-region="gt">
-<rect x="1455" y="225" width="117" height="113" rx="2"/>
-<rect x="1644" y="25" width="183" height="184" rx="2"/>
-</g>
-<g class="linked-region" opacity="0" data-link-region="a">
-<rect x="1166" y="302" width="116" height="114" rx="2"/>
-<rect x="1644" y="243" width="183" height="181" rx="2"/>
-</g>
-<g class="linked-region" opacity="0" data-link-region="b">
-<rect x="1114" y="34" width="116" height="115" rx="2"/>
-<rect x="1644" y="461" width="183" height="181" rx="2"/>
-</g>
-</svg>
-<button type="button" class="figure-hotspot crop-hotspot" data-link-key="gt" aria-label="Highlight ground-truth location in the aerial region" aria-pressed="false" style="left:88.86486%;top:3.14465%;width:9.89189%;height:23.14465%"></button>
-<button type="button" class="figure-hotspot crop-hotspot" data-link-key="a" aria-label="Highlight candidate A in the aerial region" aria-pressed="false" style="left:88.86486%;top:30.56604%;width:9.89189%;height:22.76730%"></button>
-<button type="button" class="figure-hotspot crop-hotspot" data-link-key="b" aria-label="Highlight candidate B in the aerial region" aria-pressed="false" style="left:88.86486%;top:57.98742%;width:9.89189%;height:22.76730%"></button>
     </div>
   </figure>
   <div class="challenge-notes">
@@ -78,16 +61,16 @@
   <h2>Method</h2>
   <p class="section-description">Given a ground panorama and a geo-referenced aerial region containing the camera, RingMatch combines multi-hypothesis search with geometric verification. We consider the known-orientation setting: the panorama heading is known relative to the north-up aerial image.</p>
   <div class="method-steps">
-    <article><span class="index">01</span><h3><button type="button" class="method-step-trigger" data-link-key="search" aria-controls="method-figure" aria-pressed="false">Multi-hypothesis search</button></h3><p>Sample multiple coordinate predictions and cluster nearby predictions into hypotheses, preserving distinct plausible locations.</p></article>
-    <article><span class="index">02</span><h3><button type="button" class="method-step-trigger" data-link-key="zoom" aria-controls="method-figure" aria-pressed="false">Branch-and-zoom</button></h3><p>Recursively narrow the region around each retained hypothesis to recover finer cross-view evidence.</p></article>
-    <article><span class="index">03</span><h3><button type="button" class="method-step-trigger" data-link-key="verify" aria-controls="method-figure" aria-pressed="false">Depth-ring verification</button></h3><p>Compare the ground depth ring with predicted aerial rings. An LVLM verifier uses ring patterns and visual context to select the final candidate.</p></article>
+    <article><span class="index">01</span><h3><button type="button" class="method-step-trigger" data-link-key="search" aria-controls="method-figure">Multi-hypothesis search</button></h3><p>Sample multiple coordinate predictions and cluster nearby predictions into hypotheses, preserving distinct plausible locations.</p></article>
+    <article><span class="index">02</span><h3><button type="button" class="method-step-trigger" data-link-key="zoom" aria-controls="method-figure">Branch-and-zoom</button></h3><p>Recursively narrow the region around each retained hypothesis to recover finer cross-view evidence.</p></article>
+    <article><span class="index">03</span><h3><button type="button" class="method-step-trigger" data-link-key="verify" aria-controls="method-figure">Depth-ring verification</button></h3><p>Compare the ground depth ring with predicted aerial rings. An LVLM verifier uses ring patterns and visual context to select the final candidate.</p></article>
   </div>
   <figure class="method-figure paper-figure" id="method-figure">
     <div class="figure-stage">
     <button class="figure-button" data-image="assets/method_framework.png" aria-label="Enlarge the method overview"><img src="assets/method_framework.webp" alt="RingMatch overview: multi-hypothesis branch-and-zoom search followed by depth-ring-grounded verification" width="1800" height="707" loading="lazy" decoding="async"></button>
       <svg class="figure-overlay method-overlay" viewBox="0 0 1800 707" aria-hidden="true">
         <g class="linked-region" opacity="0" data-link-region="search"><rect x="4" y="193" width="426" height="439" rx="8"/></g>
-        <g class="linked-region" opacity="0" data-link-region="zoom"><rect x="449" y="139" width="365" height="551" rx="8"/></g>
+        <g class="linked-region" opacity="0" data-link-region="zoom"><rect x="449" y="139" width="383" height="551" rx="8"/></g>
         <g class="linked-region" opacity="0" data-link-region="verify"><rect x="865" y="111" width="929" height="588" rx="8"/></g>
       </svg>
     </div>
@@ -105,35 +88,6 @@
     <figure class="depth-ring-concept paper-figure" id="depth-concept">
       <div class="figure-stage">
       <button class="figure-button" data-image="assets/depth_ring.png" aria-label="Enlarge the depth ring construction figure"><img src="assets/depth_ring.webp" alt="Depth ring construction from the paper: a horizon band in the panorama and estimated depth map produces a polar depth profile; the ground-derived ring is overlaid on an aerial patch for visualization" width="1800" height="1445" loading="lazy" decoding="async"></button>
-<svg class="figure-overlay depth-overlay" viewBox="0 0 1800 1445" aria-hidden="true">
-<g class="linked-region" opacity="0" data-link-region="street">
-<path class="feature-halo" d="M1123.464,960.988 L1119.329,955.143 L1116.528,949.568 L1114.877,944.265 L1114.107,939.188 L1113.953,934.274 L1114.227,929.471 L1114.838,924.759 L1115.781,920.154 L1117.110,915.700 L1118.899,911.457 L1121.217,907.490 L1124.104,903.857 L1127.564,900.596 L1131.555,897.719 L1135.997,895.213 L1140.801,893.050 L1145.899,891.212 L1151.265,889.703 L1156.904,888.550 L1162.820,887.782"/><path class="feature-trace" d="M1123.464,960.988 L1119.329,955.143 L1116.528,949.568 L1114.877,944.265 L1114.107,939.188 L1113.953,934.274 L1114.227,929.471 L1114.838,924.759 L1115.781,920.154 L1117.110,915.700 L1118.899,911.457 L1121.217,907.490 L1124.104,903.857 L1127.564,900.596 L1131.555,897.719 L1135.997,895.213 L1140.801,893.050 L1145.899,891.212 L1151.265,889.703 L1156.904,888.550 L1162.820,887.782"/>
-<circle class="feature-point" cx="1118.899" cy="911.457" r="18"/>
-<path class="feature-halo" d="M214.836,965.901 L210.976,960.445 L208.361,955.240 L206.819,950.289 L206.100,945.549 L205.957,940.961 L206.213,936.477 L206.782,932.078 L207.663,927.778 L208.904,923.620 L210.575,919.659 L212.738,915.955 L215.434,912.563 L218.664,909.519 L222.390,906.833 L226.537,904.493 L231.022,902.474 L235.782,900.758 L240.792,899.349 L246.056,898.272 L251.579,897.556"/><path class="feature-trace" d="M214.836,965.901 L210.976,960.445 L208.361,955.240 L206.819,950.289 L206.100,945.549 L205.957,940.961 L206.213,936.477 L206.782,932.078 L207.663,927.778 L208.904,923.620 L210.575,919.659 L212.738,915.955 L215.434,912.563 L218.664,909.519 L222.390,906.833 L226.537,904.493 L231.022,902.474 L235.782,900.758 L240.792,899.349 L246.056,898.272 L251.579,897.556"/>
-<circle class="feature-point" cx="210.575" cy="919.659" r="18"/>
-</g>
-<g class="linked-region" opacity="0" data-link-region="tree">
-<path class="feature-halo" d="M1396.392,970.530 L1396.583,972.605 L1396.799,974.554 L1397.048,976.381 L1397.316,978.114 L1397.577,979.789 L1397.826,981.421 L1398.089,982.980 L1398.429,984.406 L1398.929,985.627 L1399.659,986.591 L1400.649,987.296 L1401.875,987.792 L1403.263,988.167 L1404.719,988.520 L1406.173,988.914 L1407.629,989.346 L1409.178,989.742 L1410.988,989.984 L1413.244,989.958 L1416.092,989.597"/><path class="feature-trace" d="M1396.392,970.530 L1396.583,972.605 L1396.799,974.554 L1397.048,976.381 L1397.316,978.114 L1397.577,979.789 L1397.826,981.421 L1398.089,982.980 L1398.429,984.406 L1398.929,985.627 L1399.659,986.591 L1400.649,987.296 L1401.875,987.792 L1403.263,988.167 L1404.719,988.520 L1406.173,988.914 L1407.629,989.346 L1409.178,989.742 L1410.988,989.984 L1413.244,989.958 L1416.092,989.597"/>
-<circle class="feature-point" cx="1399.659" cy="986.591" r="18"/>
-<path class="feature-halo" d="M469.645,974.810 L469.823,976.747 L470.025,978.567 L470.258,980.272 L470.507,981.890 L470.752,983.455 L470.984,984.978 L471.229,986.434 L471.547,987.765 L472.014,988.904 L472.695,989.805 L473.619,990.463 L474.764,990.926 L476.060,991.276 L477.419,991.606 L478.777,991.973 L480.136,992.376 L481.582,992.746 L483.272,992.973 L485.379,992.949 L488.037,992.611"/><path class="feature-trace" d="M469.645,974.810 L469.823,976.747 L470.025,978.567 L470.258,980.272 L470.507,981.890 L470.752,983.455 L470.984,984.978 L471.229,986.434 L471.547,987.765 L472.014,988.904 L472.695,989.805 L473.619,990.463 L474.764,990.926 L476.060,991.276 L477.419,991.606 L478.777,991.973 L480.136,992.376 L481.582,992.746 L483.272,992.973 L485.379,992.949 L488.037,992.611"/>
-<circle class="feature-point" cx="472.695" cy="989.805" r="18"/>
-</g>
-<g class="linked-region" opacity="0" data-link-region="facade">
-<path class="feature-halo" d="M1338.364,1139.948 L1336.642,1138.944 L1334.928,1138.052 L1333.209,1137.315 L1331.481,1136.703 L1329.753,1136.136 L1328.044,1135.515 L1326.382,1134.739 L1324.796,1133.726 L1323.315,1132.420 L1321.959,1130.806 L1320.732,1128.926 L1319.612,1126.884 L1318.556,1124.826 L1317.511,1122.894 L1316.438,1121.164 L1315.334,1119.613 L1314.239,1118.128 L1313.217,1116.562 L1312.327,1114.803 L1311.597,1112.823"/><path class="feature-trace" d="M1338.364,1139.948 L1336.642,1138.944 L1334.928,1138.052 L1333.209,1137.315 L1331.481,1136.703 L1329.753,1136.136 L1328.044,1135.515 L1326.382,1134.739 L1324.796,1133.726 L1323.315,1132.420 L1321.959,1130.806 L1320.732,1128.926 L1319.612,1126.884 L1318.556,1124.826 L1317.511,1122.894 L1316.438,1121.164 L1315.334,1119.613 L1314.239,1118.128 L1313.217,1116.562 L1312.327,1114.803 L1311.597,1112.823"/>
-<circle class="feature-point" cx="1321.959" cy="1130.806" r="18"/>
-<path class="feature-halo" d="M415.470,1132.980 L413.861,1132.044 L412.262,1131.211 L410.657,1130.523 L409.043,1129.951 L407.430,1129.422 L405.835,1128.842 L404.283,1128.118 L402.803,1127.172 L401.420,1125.952 L400.154,1124.445 L399.008,1122.690 L397.962,1120.784 L396.976,1118.863 L396.001,1117.059 L394.999,1115.444 L393.968,1113.996 L392.946,1112.609 L391.992,1111.147 L391.161,1109.505 L390.480,1107.657"/><path class="feature-trace" d="M415.470,1132.980 L413.861,1132.044 L412.262,1131.211 L410.657,1130.523 L409.043,1129.951 L407.430,1129.422 L405.835,1128.842 L404.283,1128.118 L402.803,1127.172 L401.420,1125.952 L400.154,1124.445 L399.008,1122.690 L397.962,1120.784 L396.976,1118.863 L396.001,1117.059 L394.999,1115.444 L393.968,1113.996 L392.946,1112.609 L391.992,1111.147 L391.161,1109.505 L390.480,1107.657"/>
-<circle class="feature-point" cx="400.154" cy="1124.445" r="18"/>
-</g>
-</svg>
-<button type="button" class="figure-hotspot point-hotspot" data-link-key="street" tabindex="-1" aria-hidden="true" style="left:62.16107%;top:63.07660%" title="Open street"></button>
-<button type="button" class="figure-hotspot point-hotspot" data-link-key="street" tabindex="-1" aria-hidden="true" style="left:11.69859%;top:63.64420%" title="Open street"></button>
-<button type="button" class="figure-hotspot label-hotspot" data-link-key="street" aria-label="Highlight open street in the depth ring" aria-pressed="false" style="left:47.22222%;top:51.21107%;width:18.05556%;height:6.08997%" title="Open street"></button>
-<button type="button" class="figure-hotspot point-hotspot" data-link-key="tree" tabindex="-1" aria-hidden="true" style="left:77.75884%;top:68.27619%" title="Tree trunk"></button>
-<button type="button" class="figure-hotspot point-hotspot" data-link-key="tree" tabindex="-1" aria-hidden="true" style="left:26.26085%;top:68.49859%" title="Tree trunk"></button>
-<button type="button" class="figure-hotspot label-hotspot" data-link-key="tree" aria-label="Highlight tree trunk in the depth ring" aria-pressed="false" style="left:83.61111%;top:52.45675%;width:15.27778%;height:6.08997%" title="Tree trunk"></button>
-<button type="button" class="figure-hotspot point-hotspot" data-link-key="facade" tabindex="-1" aria-hidden="true" style="left:73.44218%;top:78.25646%" title="Facade recess"></button>
-<button type="button" class="figure-hotspot point-hotspot" data-link-key="facade" tabindex="-1" aria-hidden="true" style="left:22.23076%;top:77.81630%" title="Facade recess"></button>
-<button type="button" class="figure-hotspot label-hotspot" data-link-key="facade" aria-label="Highlight facade recess in the depth ring" aria-pressed="false" style="left:49.44444%;top:85.46713%;width:21.66667%;height:6.22837%" title="Facade recess"></button>
       </div>
     </figure>
   </div>
@@ -145,7 +99,7 @@
   <h3 id="ring-comparisons-title">Qualitative Comparisons</h3>
   <p class="section-description">The ground depth ring is compared with predicted aerial rings at two candidate locations. Consistent profiles support the matching location, while differences in the surrounding layout reveal a look-alike.</p>
   <div class="example-controls" role="group" aria-label="Qualitative example"><button type="button" class="selected" data-case="1175" aria-pressed="true">1</button><button type="button" data-case="1720" aria-pressed="false">2</button><button type="button" data-case="0538" aria-pressed="false">3</button><button type="button" data-case="0175" aria-pressed="false">4</button></div>
-  <figure class="example-figure paper-figure"><button class="figure-button" id="case-enlarge" data-image="assets/depth_ring_case_1175.png" aria-label="Enlarge the selected example"><img id="case-image" decoding="async" src="assets/depth_ring_case_1175.webp" alt="Example 1: ground panorama, two aerial candidates and depth-ring comparisons from the paper" width="1800" height="1066" loading="lazy" decoding="async"></button></figure>
+  <figure class="example-figure paper-figure"><button class="figure-button" id="case-enlarge" data-image="assets/depth_ring_case_1175.png" aria-label="Enlarge the selected example"><img id="case-image" src="assets/depth_ring_case_1175.webp" alt="Example 1: ground panorama, two aerial candidates and depth-ring comparisons from the paper" width="1800" height="1066" loading="lazy" decoding="async"></button></figure>
   <p id="example-status" class="example-status" role="status" aria-live="polite"></p>
 </section>
 </section>
@@ -193,5 +147,5 @@
 </main>
 <footer><p>RingMatch · Wide-area cross-view localization</p><a href="#">Back to top</a></footer>
 <dialog id="image-dialog"><button type="button" class="dialog-close" aria-label="Close figure">×</button><img alt="Enlarged paper figure"></dialog>
-<script src="results-data.js"></script><script src="overview-trace.js?v=ordered-branches-20261027"></script><script src="overview.js?v=ordered-branches-20261027"></script><script src="app.js?v=page-motion-20261029"></script>
+<script src="results-data.js"></script><script src="overview-trace.js?v=ordered-branches-20261027"></script><script src="overview.js?v=ordered-branches-20261027"></script><script src="app.js?v=scroll-reveal-20261029"></script>
 </body></html>

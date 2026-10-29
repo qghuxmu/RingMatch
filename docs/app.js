@@ -25,35 +25,35 @@
     if (event.currentTarget.getAttribute('aria-disabled') === 'true') event.preventDefault();
   });
 
-  // Mouse hover, keyboard focus, and a pinned touch selection share one mapping.
-  function linkFigure(triggers, figure, cardSelector = null) {
-    let pinned = null, hovered = null, focused = null;
+  // Highlight only while the explanation is hovered or deliberately keyboard-focused.
+  function highlightMethod(triggers, figure) {
+    let hovered = null, focused = null;
     const regions = [...figure.querySelectorAll('[data-link-region]')];
     const refresh = () => {
-      const key = hovered || focused || pinned;
+      const key = hovered || focused;
       regions.forEach(region => region.classList.toggle('is-active', region.dataset.linkRegion === key));
       triggers.forEach(trigger => {
         const active = trigger.dataset.linkKey === key;
         trigger.classList.toggle('is-active', active);
-        trigger.setAttribute('aria-pressed', String(trigger.dataset.linkKey === pinned));
-        if (cardSelector) trigger.closest(cardSelector)?.classList.toggle('is-active', active);
+        trigger.closest('article').classList.toggle('is-active', active);
       });
     };
     triggers.forEach(trigger => {
-      const key = trigger.dataset.linkKey, target = cardSelector ? trigger.closest(cardSelector) : trigger;
-      target.addEventListener('pointerenter', event => { if (event.pointerType !== 'touch') { hovered = key; refresh(); } });
-      target.addEventListener('pointerleave', () => { if (hovered === key) hovered = null; refresh(); });
-      trigger.addEventListener('focus', () => { focused = key; refresh(); });
+      const key = trigger.dataset.linkKey, target = trigger.closest('article');
+      target.addEventListener('pointerenter', event => {
+        if (event.pointerType !== 'touch') { focused = null; hovered = key; refresh(); }
+      });
+      target.addEventListener('pointerleave', () => { hovered = focused = null; refresh(); });
+      trigger.addEventListener('pointerdown', () => { focused = null; refresh(); });
+      trigger.addEventListener('focus', () => { if (trigger.matches(':focus-visible')) { focused = key; refresh(); } });
       trigger.addEventListener('blur', () => { if (focused === key) focused = null; refresh(); });
-      trigger.addEventListener('click', () => { pinned = pinned === key ? null : key; focused = null; refresh(); });
       trigger.addEventListener('keydown', event => {
-        if (event.key === 'Escape') { pinned = hovered = focused = null; refresh(); }
+        if (event.key === 'Escape') { hovered = focused = null; refresh(); }
       });
     });
+    window.addEventListener('blur', () => { hovered = focused = null; refresh(); });
   }
-  linkFigure(qa('.method-step-trigger'), q('#method-figure'), 'article');
-  linkFigure(qa('#depth-concept [data-link-key]'), q('#depth-concept'));
-  linkFigure(qa('#challenge-figure [data-link-key]'), q('#challenge-figure'));
+  highlightMethod(qa('.method-step-trigger'), q('#method-figure'));
 
   const state = {setting: 'cross', scale: '400'};
   function selectGroup(selector, key, value) {
@@ -192,6 +192,21 @@
       entry.target.querySelectorAll('.accuracy-gain').forEach(gain => motion(gain, [{opacity: .45}, {opacity: 1}], {duration: 350}));
     }), {threshold: .4});
     qa('#zero-shot .ring-evidence').forEach(row => observer.observe(row));
+  }
+
+  // A small, one-time reveal for visual material as it enters the reading area.
+  // Content stays visible if observers, animation, or motion preference are unavailable.
+  if ('IntersectionObserver' in window && !preference.matches) {
+    const revealed = new WeakSet();
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+      if (!entry.isIntersecting || revealed.has(entry.target)) return;
+      revealed.add(entry.target); observer.unobserve(entry.target);
+      const targets = entry.target.classList.contains('method-steps') ? [...entry.target.children] : [entry.target];
+      targets.forEach((target, index) => motion(target,
+        [{opacity: .35, transform: 'translateY(8px)'}, {opacity: 1, transform: 'translateY(0)'}],
+        {duration: 440, delay: index * 55, easing: 'cubic-bezier(0.22, 1, 0.36, 1)'}, 'reveal'));
+    }), {threshold: .12, rootMargin: '0px 0px -24px 0px'});
+    qa('#challenge-figure, .method-steps, #method-figure, #depth-concept, .example-figure, #results .table-scroll').forEach(target => observer.observe(target));
   }
 
   const dialog = q('#image-dialog'), dialogImage = dialog.querySelector('img');
