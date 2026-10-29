@@ -178,55 +178,21 @@
     }));
   });
 
-  // Connect the added geometric evidence with its gains, once per row.
-  if ('IntersectionObserver' in window && !preference.matches) {
-    const emphasized = new WeakSet();
-    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
-      if (!entry.isIntersecting || emphasized.has(entry.target)) return;
-      emphasized.add(entry.target);
-      observer.unobserve(entry.target);
-      entry.target.querySelectorAll('.accuracy-cell').forEach(cell => {
-        const base = getComputedStyle(cell).backgroundColor;
-        motion(cell, [{backgroundColor: base}, {backgroundColor: '#e9f1df', offset: .3}, {backgroundColor: base}], {duration: 650}, 'evidence');
-      });
-      entry.target.querySelectorAll('.accuracy-gain').forEach(gain => motion(gain, [{opacity: .45}, {opacity: 1}], {duration: 350}));
-    }), {threshold: .4});
-    qa('#zero-shot .ring-evidence').forEach(row => observer.observe(row));
-  }
-
-  // A small, one-time reveal for visual material as it enters the reading area.
-  // Content stays visible if observers, animation, or motion preference are unavailable.
-  if ('IntersectionObserver' in window && !preference.matches) {
-    const revealed = new WeakSet();
-    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
-      if (!entry.isIntersecting || revealed.has(entry.target)) return;
-      revealed.add(entry.target); observer.unobserve(entry.target);
-      const targets = entry.target.classList.contains('method-steps') ? [...entry.target.children] : [entry.target];
-      targets.forEach((target, index) => motion(target,
-        [{opacity: .35, transform: 'translateY(8px)'}, {opacity: 1, transform: 'translateY(0)'}],
-        {duration: 440, delay: index * 55, easing: 'cubic-bezier(0.22, 1, 0.36, 1)'}, 'reveal'));
-    }), {threshold: .12, rootMargin: '0px 0px -24px 0px'});
-    qa('#challenge-figure, .method-steps, #method-figure, #depth-concept, .example-figure, #results .table-scroll').forEach(target => observer.observe(target));
-  }
-
   const dialog = q('#image-dialog'), dialogImage = dialog.querySelector('img');
-  let dialogVersion = 0, closing = false;
+  let dialogVersion = 0;
   async function openFigure(button) {
     const version = ++dialogVersion, preview = button.querySelector('img');
-    closing = false; dialog.classList.remove('is-closing'); stopMotion(dialog);
     dialogImage.src = preview.currentSrc || preview.src; dialogImage.alt = preview.alt;
-    if (!dialog.open) { dialog.showModal(); motion(dialog, [{opacity: 0}, {opacity: 1}], {duration: 150}); }
+    if (!dialog.open) dialog.showModal();
     try {
       const highResolution = await loadImage(button.dataset.image);
-      if (version === dialogVersion && dialog.open && !closing) dialogImage.src = highResolution.src;
+      if (version === dialogVersion && dialog.open) dialogImage.src = highResolution.src;
     } catch {} // The already-visible preview remains usable.
   }
-  async function closeFigure() {
-    if (!dialog.open || closing) return;
-    closing = true; const version = ++dialogVersion; dialog.classList.add('is-closing');
-    await motion(dialog, [{opacity: 1}, {opacity: 0}], {duration: 130});
-    if (version !== dialogVersion) return;
-    dialog.close(); dialog.classList.remove('is-closing'); closing = false;
+  function closeFigure() {
+    if (!dialog.open) return;
+    ++dialogVersion;
+    dialog.close();
   }
   qa('[data-image]').forEach(button => button.addEventListener('click', () => openFigure(button)));
   q('.dialog-close').addEventListener('click', closeFigure);

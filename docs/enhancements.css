@@ -23,11 +23,6 @@
 .metric-value{display:inline-block;font-variant-numeric:tabular-nums}
 .segmented button{transition:background-color 150ms,color 150ms}
 
-dialog[open]::backdrop{animation:figure-backdrop-in 150ms ease-out both}
-dialog.is-closing::backdrop{animation:figure-backdrop-out 130ms ease-in both}
-@keyframes figure-backdrop-in{from{background:#242b2400}to{background:#242b24cf}}
-@keyframes figure-backdrop-out{from{background:#242b24cf}to{background:#242b2400}}
 @media(prefers-reduced-motion:reduce){
   .linked-region,.method-step-trigger,.method-steps article,.example-controls button,.segmented button{transition:none}
-  dialog[open]::backdrop,dialog.is-closing::backdrop{animation:none}
 }
