@@ -132,6 +132,13 @@
   }
   const caseImage = q('#case-image'), caseButton = q('#case-enlarge'), exampleButtons = qa('[data-case]');
   let currentCase = exampleButtons.find(button => button.classList.contains('selected')).dataset.case, caseVersion = 0;
+  function setExampleLoading(index = null) {
+    const busy = index !== null;
+    if (busy) q('#example-loading-label').textContent = `Loading example ${index + 1}…`;
+    q('#example-loading').hidden = !busy;
+    caseButton.disabled = busy;
+    caseButton.setAttribute('aria-busy', String(busy));
+  }
   function selectExample(id) {
     exampleButtons.forEach(button => {
       const selected = button.dataset.case === id;
@@ -146,8 +153,8 @@
     const version = ++caseVersion, id = button.dataset.case;
     clearCaseTransition(); q('#example-status').textContent = '';
     exampleButtons.forEach(other => other.classList.remove('is-loading'));
-    if (id === currentCase) { caseButton.setAttribute('aria-busy', 'false'); return; }
-    button.classList.add('is-loading'); caseButton.setAttribute('aria-busy', 'true');
+    if (id === currentCase) { setExampleLoading(); return; }
+    button.classList.add('is-loading'); setExampleLoading(index);
     try {
       const loaded = await loadImage(`assets/depth_ring_case_${id}.webp`);
       if (version !== caseVersion) return;
@@ -160,14 +167,14 @@
       caseImage.alt = `Example ${index + 1}: ground panorama, aerial candidates and depth-ring comparisons from the paper`;
       caseButton.dataset.image = `assets/depth_ring_case_${id}.png`;
       currentCase = id; selectExample(id);
-      button.classList.remove('is-loading'); caseButton.setAttribute('aria-busy', 'false');
+      button.classList.remove('is-loading'); setExampleLoading();
       const incoming = previous ? Promise.resolve() : motion(caseImage, [{opacity: 0}, {opacity: 1}], {duration: 220});
       if (previous) await Promise.all([incoming, motion(previous, [{opacity: 1}, {opacity: 0}], {duration: 220})]);
       else await incoming;
       previous?.remove();
     } catch {
       if (version !== caseVersion) return;
-      button.classList.remove('is-loading'); caseButton.setAttribute('aria-busy', 'false');
+      button.classList.remove('is-loading'); setExampleLoading();
       q('#example-status').textContent = 'Unable to load this example. Please try again.';
     }
   }

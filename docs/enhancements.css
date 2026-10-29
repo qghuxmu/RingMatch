@@ -13,11 +13,17 @@
 .method-steps article.is-active .method-step-trigger{color:#41682b;text-decoration-color:#65834e}
 
 /* Keep the frame and comparison positions stable while changing examples. */
+.example-figure{position:relative}
 .example-figure .figure-button{position:relative;aspect-ratio:1800/1066;isolation:isolate;overflow:hidden}
+.example-figure .figure-button:disabled{cursor:progress}
 .example-figure .figure-button>img{display:block;width:100%;height:100%;max-height:none;object-fit:contain}
 .example-figure .case-previous{position:absolute;inset:0;pointer-events:none;background:#fff;z-index:1}
+.example-loading{position:absolute;inset:0;z-index:3;display:flex;align-items:center;justify-content:center;gap:10px;border-radius:inherit;background:rgba(255,255,255,.88);color:#526647;font-size:13px;cursor:progress}
+.example-loading[hidden]{display:none}
+.example-loading-spinner{width:18px;height:18px;flex-shrink:0;border:2px solid #d4dec9;border-top-color:#5c7b46;border-radius:50%;animation:example-loading-spin .8s linear infinite}
+@keyframes example-loading-spin{to{transform:rotate(360deg)}}
 .example-controls button{transition:background-color 140ms,border-color 140ms,opacity 140ms}
-.example-controls button.is-loading{opacity:.6}
+.example-controls button.is-loading{opacity:1;border-color:#8ba474;border-style:dashed;background:#f3f6ee}
 .example-status{font-size:12px;color:#697560;margin:9px 0 0}
 .example-status:empty{display:none}
 .metric-value{display:inline-block;font-variant-numeric:tabular-nums}
@@ -25,4 +31,5 @@
 
 @media(prefers-reduced-motion:reduce){
   .linked-region,.method-step-trigger,.method-steps article,.example-controls button,.segmented button{transition:none}
+  .example-loading-spinner{animation:none}
 }

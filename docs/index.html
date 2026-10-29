@@ -5,7 +5,7 @@
 <title>RingMatch | Beyond Local Refinement</title>
 <meta name="description" content="RingMatch: a search-and-verification framework for wide-area precise cross-view localization.">
 <link rel="stylesheet" href="style.css?v=navigation-20261026"><link rel="stylesheet" href="overview.css?v=replay-controls-20261027">
-<link rel="stylesheet" href="enhancements.css?v=static-sections-20261029">
+<link rel="stylesheet" href="enhancements.css?v=case-loading-20261029">
 <link rel="icon" href="data:,">
 <link rel="preload" as="image" href="assets/cases/case-01/aerial.webp" fetchpriority="high">
 <link rel="preload" as="image" href="assets/cases/case-01/pano.webp" fetchpriority="high">
@@ -99,7 +99,7 @@
   <h3 id="ring-comparisons-title">Qualitative Comparisons</h3>
   <p class="section-description">The ground depth ring is compared with predicted aerial rings at two candidate locations. Consistent profiles support the matching location, while differences in the surrounding layout reveal a look-alike.</p>
   <div class="example-controls" role="group" aria-label="Qualitative example"><button type="button" class="selected" data-case="1175" aria-pressed="true">1</button><button type="button" data-case="1720" aria-pressed="false">2</button><button type="button" data-case="0538" aria-pressed="false">3</button><button type="button" data-case="0175" aria-pressed="false">4</button></div>
-  <figure class="example-figure paper-figure"><button class="figure-button" id="case-enlarge" data-image="assets/depth_ring_case_1175.png" aria-label="Enlarge the selected example"><img id="case-image" src="assets/depth_ring_case_1175.webp" alt="Example 1: ground panorama, two aerial candidates and depth-ring comparisons from the paper" width="1800" height="1066" loading="lazy" decoding="async"></button></figure>
+  <figure class="example-figure paper-figure"><button class="figure-button" id="case-enlarge" data-image="assets/depth_ring_case_1175.png" aria-label="Enlarge the selected example"><img id="case-image" src="assets/depth_ring_case_1175.webp" alt="Example 1: ground panorama, two aerial candidates and depth-ring comparisons from the paper" width="1800" height="1066" loading="lazy" decoding="async"></button><div class="example-loading" id="example-loading" role="status" aria-live="polite" aria-atomic="true" hidden><span class="example-loading-spinner" aria-hidden="true"></span><span id="example-loading-label">Loading example…</span></div></figure>
   <p id="example-status" class="example-status" role="status" aria-live="polite"></p>
 </section>
 </section>
@@ -147,5 +147,5 @@
 </main>
 <footer><p>RingMatch · Wide-area cross-view localization</p><a href="#">Back to top</a></footer>
 <dialog id="image-dialog"><button type="button" class="dialog-close" aria-label="Close figure">×</button><img alt="Enlarged paper figure"></dialog>
-<script src="results-data.js"></script><script src="overview-trace.js?v=ordered-branches-20261027"></script><script src="overview.js?v=ordered-branches-20261027"></script><script src="app.js?v=static-sections-20261029"></script>
+<script src="results-data.js"></script><script src="overview-trace.js?v=ordered-branches-20261027"></script><script src="overview.js?v=ordered-branches-20261027"></script><script src="app.js?v=case-loading-20261029"></script>
 </body></html>
