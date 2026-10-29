@@ -134,7 +134,7 @@
   let currentCase = exampleButtons.find(button => button.classList.contains('selected')).dataset.case, caseVersion = 0;
   function setExampleLoading(index = null) {
     const busy = index !== null;
-    if (busy) q('#example-loading-label').textContent = `Loading example ${index + 1}…`;
+    if (busy) q('#example-loading-label').textContent = 'Loading...';
     q('#example-loading').hidden = !busy;
     caseButton.disabled = busy;
     caseButton.setAttribute('aria-busy', String(busy));
