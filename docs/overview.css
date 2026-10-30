@@ -21,3 +21,35 @@
 #rm-motion-run:hover:not(:disabled){background:#486634}
 #rm-motion-run:disabled{opacity:.65}
 @media(max-width:650px){.rm-case-bar{gap:8px 12px;padding:8px 10px;font-size:11px}.rm-case-picker{max-width:100%}.rm-case-picker select{max-width:250px;font-size:11px}.rm-case-picker button{min-width:28px}.rm-run-controls button{min-width:58px;font-size:11px;padding:7px 10px}.rm-motion-source{font-size:9px}#rm-motion-run{min-width:62px}#rm-motion-canvas{aspect-ratio:560/1450}}
+
+/* A fixed video overview followed by a reader-controlled stage explorer. */
+.rm-video{border:1px solid #dce3d5;border-radius:7px;background:#fff;overflow:hidden;margin-top:20px}
+.rm-video-stage{position:relative;aspect-ratio:1120/650;background:#fff}
+.rm-video video{display:block;width:100%;height:100%;object-fit:contain}
+.rm-video-controls{display:flex;align-items:center;gap:12px;padding:10px 14px;border-top:1px solid #e2e7dc;background:#fafbf8}
+.rm-video-controls[hidden],.rm-video-notice[hidden],.rm-video-play-overlay[hidden],.rm-case-loading[hidden],.rm-search-levels[hidden]{display:none}
+.rm-media-button{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;flex-shrink:0;padding:5px;border:0;background:transparent;color:#526b42;border-radius:4px}
+.rm-media-button:hover{background:#edf2e7}.rm-media-button svg{width:20px;height:20px;fill:currentColor}.rm-media-button svg[fill="none"]{fill:none}
+#video-seek{flex:1;min-width:30px;accent-color:#638548;height:18px;cursor:pointer;margin:0}
+.rm-video-time{font-size:11px;font-variant-numeric:tabular-nums;color:#68755e;white-space:nowrap}
+#video-speed{font:inherit;font-size:12px;border:0;color:#526b42;background:transparent;cursor:pointer;padding:4px}
+.rm-video-notice{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#ffffffc9;color:#61724f;font-size:13px;pointer-events:none}
+.rm-video-play-overlay{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);border:1px solid #b8c8aa;border-radius:6px;padding:10px 19px;background:#ffffffed;color:#496736;font-size:14px}
+.rm-video:fullscreen{display:flex;flex-direction:column;justify-content:center;border:0;border-radius:0}.rm-video:fullscreen .rm-video-stage{flex:1;min-height:0;aspect-ratio:auto}.rm-video:fullscreen .rm-video-controls{flex-shrink:0}
+.rm-interactive-heading{font-size:20px;font-weight:550;color:#303c2b;margin:32px 0 12px}
+.rm-interactive-heading+.rm-motion{margin-top:0}
+.rm-stage-tabs{display:flex;flex-wrap:wrap;gap:6px;padding:10px 15px;border-bottom:1px solid #e2e7dc}
+.rm-stage-tabs button,.rm-search-levels button{font:inherit;font-size:12px;line-height:1.4;min-height:33px;padding:7px 13px;background:#fff;border:1px solid transparent;border-radius:4px;color:#69785d}
+.rm-stage-tabs button[aria-pressed="true"]{background:#edf3e6;border-color:#d0ddc3;color:#476834;font-weight:550}
+.rm-stage-tabs button:hover:not(:disabled),.rm-search-levels button:hover:not(:disabled){background:#f4f7ef}
+.rm-stage-tabs button:disabled,.rm-search-levels button:disabled{opacity:.55;cursor:default}
+.rm-search-levels{display:flex;justify-content:flex-end;gap:4px;padding:6px 15px 0}
+.rm-search-levels button{font-size:11px;min-height:28px;padding:4px 10px;border-color:#e0e6d9}
+.rm-search-levels button[aria-pressed="true"]{border-color:#9fb58d;background:#f2f6ec;color:#466532}
+.rm-case-loading{position:absolute;inset:0;z-index:2;display:flex;align-items:center;justify-content:center;background:#ffffffeb;font-size:13px;color:#61724f}
+.rm-stage-footer{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 15px;border-top:1px solid #e2e7dc;background:#fcfdfb}
+.rm-stage-footer>p{max-width:690px;font-size:12px;line-height:1.7;color:#68775d;margin:0}
+.rm-stage-footer .rm-run-controls{flex-shrink:0}.rm-stage-footer #rm-motion-run{min-width:113px}
+@media(max-width:650px){.rm-video-controls{padding:8px;gap:6px}.rm-video-time{font-size:10px}.rm-media-button{width:27px;height:30px}#video-speed{font-size:11px;padding:3px}.rm-interactive-heading{font-size:18px;margin-top:26px}.rm-stage-tabs{padding:8px 10px;gap:5px}.rm-stage-tabs button{font-size:11px;padding:6px 9px;min-height:33px}.rm-stage-footer{flex-direction:column;align-items:stretch;padding:12px}.rm-stage-footer .rm-run-controls{justify-content:flex-end}.rm-stage-footer>p{font-size:11px}}
+
+.rm-stage-footer .rm-run-controls{flex-wrap:wrap}

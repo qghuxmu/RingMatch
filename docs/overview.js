@@ -9,6 +9,33 @@
   const palette=['#d58b30','#238ac2','#aa70b4'];
   const state={time:0,playing:false,last:0,raf:0,mobile:false,w:1120,h:650,scale:1,loaded:false,playRequested:false,userPaused:false,resumeOnEnter:false,phase:'',frames:[],frameCount:0};
   let images={};
+  const stages={
+    sampling:{start:0,end:7.7,still:7.7,text:'Repeated coordinate predictions form several spatial hypotheses.'},
+    search:{start:10,end:58.5,still:57.5,text:'Each retained hypothesis defines a finer crop. Low-support branches are pruned as the search proceeds.'},
+    candidates:{start:59.3,end:63.8,still:63.5,text:'The two highest-ranked hypotheses are passed to verification.'},
+    rings:{start:64,end:80.4,still:80.3,text:'The ground ring is extracted from the highlighted depth band; aerial rings are predicted from candidate patches.'},
+    verification:{start:80.5,end:102,still:102,text:'The verifier compares both candidates using visual context and aligned ring profiles.'}
+  };
+  const searchScales={200:{start:10,end:19.3,still:18.3},100:{start:20,end:35.5,still:34},50:{start:36,end:58.5,still:57.5}};
+  let activeStage='sampling',activeScale=null,playUntil=duration,replayActive=false;
+  const stageButtons=[...root.querySelectorAll('[data-stage]')],scaleButtons=[...root.querySelectorAll('[data-search-scale]')];
+  const currentRange=()=>activeStage==='search'&&activeScale?searchScales[activeScale]:stages[activeStage];
+  const notifyInteraction=()=>document.dispatchEvent(new CustomEvent('ringmatch:interact'));
+  function syncStageControls(){
+    stageButtons.forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.stage===activeStage)));
+    scaleButtons.forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.searchScale)===activeScale)));
+    $('#rm-search-levels').hidden=activeStage!=='search';
+    $('#rm-stage-explanation').textContent=stages[activeStage].text;
+    root.dataset.stage=activeStage;
+  }
+  function selectStage(key,scale=null){
+    if(!stages[key]||!state.loaded)return;
+    notifyInteraction();pause(false);activeStage=key;activeScale=scale;replayActive=false;
+    state.playRequested=false;state.resumeOnEnter=false;state.userPaused=false;
+    state.time=currentRange().still;state.last=0;syncStageControls();render();updateButton();
+  }
+  stageButtons.forEach(button=>button.addEventListener('click',()=>selectStage(button.dataset.stage)));
+  scaleButtons.forEach(button=>button.addEventListener('click',()=>selectStage('search',Number(button.dataset.searchScale))));
   const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
   const smooth=v=>{v=clamp(v);return v*v*v*(v*(v*6-15)+10);};
   const u=(t,a,b)=>smooth((t-a)/(b-a));
@@ -496,29 +523,31 @@
     const dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(width*dpr);canvas.height=Math.round(cssHeight*dpr);canvas.style.aspectRatio=state.w+'/'+state.h;state.scale=canvas.width/state.w;render();
   }
   function updateButton(){
-    const button=$('#rm-motion-run');button.textContent=state.playing?'Running…':'Run';button.disabled=state.playing||!state.loaded;
+    const button=$('#rm-motion-run');
+    button.textContent=state.playing?'Replaying…':replayActive&&state.userPaused?'Resume':'Replay stage';
+    button.disabled=state.playing||!state.loaded;
     $('#rm-motion-pause').disabled=!state.playing||!state.loaded;
-    $('#rm-motion-reset').disabled=!state.loaded;
   }
   function pause(manual=true){state.playing=false;if(manual){state.userPaused=true;state.playRequested=false;state.resumeOnEnter=false;}cancelAnimationFrame(state.raf);updateButton();}
   function tick(timestamp){
-    if(!state.playing)return;let dt=state.last?Math.min((timestamp-state.last)/1000,.08):0;state.last=timestamp;
-    if(dt>0){state.frames.push(dt);if(state.frames.length>90)state.frames.shift();if(state.frameCount%20===0){canvas.dataset.fps=(state.frames.length/state.frames.reduce((a,b)=>a+b,0)).toFixed(1);const intervals=state.frames.slice().sort((a,b)=>a-b);canvas.dataset.frameP95=(intervals[Math.floor(intervals.length*.95)]*1000).toFixed(1);}}
-    state.time=Math.min(duration,state.time+dt*baselineSpeed);render();if(state.time>=duration){pause(false);return;}state.raf=requestAnimationFrame(tick);
+    if(!state.playing)return;const dt=state.last?Math.min((timestamp-state.last)/1000,.08):0;state.last=timestamp;
+    state.time=Math.min(playUntil,state.time+dt*baselineSpeed);render();
+    if(state.time>=playUntil){replayActive=false;pause(false);return;}
+    state.raf=requestAnimationFrame(tick);
   }
-  function replay(){state.time=0;state.last=0;state.userPaused=false;render();play();}
-  function reset(){pause();state.time=0;state.last=0;render();}
-  function play(){if(!state.loaded){state.playRequested=true;return;}state.playRequested=false;if(state.time>=duration){replay();return;}cancelAnimationFrame(state.raf);state.playing=true;state.userPaused=false;state.last=0;updateButton();state.raf=requestAnimationFrame(tick);}
-  $('#rm-motion-run').addEventListener('click',play);
+  function play(){
+    if(!state.loaded)return;
+    cancelAnimationFrame(state.raf);state.playing=true;state.userPaused=false;state.last=0;updateButton();state.raf=requestAnimationFrame(tick);
+  }
+  function replayStage(){
+    if(!state.loaded)return;notifyInteraction();
+    if(!(replayActive&&state.userPaused)){
+      state.time=currentRange().start;state.last=0;playUntil=currentRange().end;replayActive=true;render();
+    }
+    play();
+  }
+  $('#rm-motion-run').addEventListener('click',replayStage);
   $('#rm-motion-pause').addEventListener('click',()=>pause());
-  $('#rm-motion-reset').addEventListener('click',reset);
-  document.querySelector('#watch-demo')?.addEventListener('click',event=>{
-    event.preventDefault();
-    const box=root.getBoundingClientRect(),offset=Math.max(24,(window.innerHeight-box.height)/2);
-    window.scrollTo({top:Math.max(0,window.scrollY+box.top-offset),behavior:reduced?'auto':'smooth'});
-    window.history.replaceState(null,'','#rm-motion');
-    root.focus({preventScroll:true});state.resumeOnEnter=false;replay();
-  });
 
   new ResizeObserver(resize).observe(root);
   const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -528,32 +557,41 @@
   const entries=window.RINGMATCH_CASES||[];
   const selector=$('#rm-case-select'),status=$('.rm-motion-source');
   entries.forEach(entry=>{const option=document.createElement('option');option.value=entry.id;option.textContent=entry.label;selector.append(option);});
-  selector.value=d.id;
+  selector.value=root.dataset.defaultCase||d.id;
   function controlsLoading(loading){
     root.setAttribute('aria-busy',String(loading));
-    if(loading)['#rm-motion-run','#rm-motion-pause','#rm-motion-reset'].forEach(id=>$(id).disabled=true);
+    stageButtons.concat(scaleButtons).forEach(button=>button.disabled=loading);
+    $('#rm-case-loading').hidden=!loading;
+    $('.rm-motion-stage').setAttribute('aria-busy',String(loading));
+    if(loading)['#rm-motion-run','#rm-motion-pause'].forEach(id=>$(id).disabled=true);
     else updateButton();
-    status.textContent=loading?'Loading case…':'';
+    status.textContent='';
   }
   async function activateCase(trace,version){
     const nextImages={};
     const loadImage=(key,priority)=>new Promise(resolve=>{const img=new Image();nextImages[key]=img;img.decoding='async';img.fetchPriority=priority;img.onload=()=>resolve(true);img.onerror=()=>resolve(false);img.src=trace.assets[key];});
-    const ready=await Promise.all([loadImage('aerial','high'),loadImage('pano','high')]);
+    const ready=await Promise.all([loadImage('aerial','auto'),loadImage('pano','auto'),loadImage('depth','auto')]);
     if(version!==loadVersion)return;
     if(!ready.every(Boolean))throw new Error('Input image download failed');
-    d=trace;images=nextImages;updateOrders();state.loaded=true;state.time=0;state.last=0;state.phase='';state.userPaused=false;state.resumeOnEnter=false;selector.value=trace.id;controlsLoading(false);updateButton();resize();
+    d=trace;images=nextImages;updateOrders();state.loaded=true;state.time=currentRange().still;state.last=0;state.phase='';state.userPaused=false;state.resumeOnEnter=false;replayActive=false;selector.value=trace.id;controlsLoading(false);syncStageControls();updateButton();resize();
     canvas.dataset.caseId=trace.id;
-    if(state.playRequested)play();
-    ['depth'].forEach(key=>loadImage(key,'low').then(()=>{if(version===loadVersion){images=nextImages;render();}}));
+
   }
   async function switchCase(id){
-    const version=++loadVersion;pause(false);state.playRequested=false;state.loaded=false;controlsLoading(true);
+    const version=++loadVersion;pause(false);replayActive=false;state.resumeOnEnter=false;state.playRequested=false;state.loaded=false;controlsLoading(true);
     try{const trace=await window.loadRingMatchCase(id);if(version!==loadVersion)return;await activateCase(trace,version);}
     catch(error){if(version!==loadVersion)return;controlsLoading(false);status.textContent='Unable to load case';selector.value=d.id;state.loaded=!!images.aerial?.naturalWidth;updateButton();}
   }
-  selector.addEventListener('change',event=>switchCase(event.target.value));
-  function stepCase(delta){const index=entries.findIndex(entry=>entry.id===selector.value),next=entries[(index+delta+entries.length)%entries.length];selector.value=next.id;switchCase(next.id);}
+  selector.addEventListener('change',event=>{notifyInteraction();return switchCase(event.target.value);});
+  function stepCase(delta){notifyInteraction();const index=entries.findIndex(entry=>entry.id===selector.value),next=entries[(index+delta+entries.length)%entries.length];selector.value=next.id;switchCase(next.id);}
   $('#rm-case-prev').addEventListener('click',()=>stepCase(-1));$('#rm-case-next').addEventListener('click',()=>stepCase(1));
-  controlsLoading(true);activateCase(d,++loadVersion).catch(()=>{controlsLoading(false);updateButton();status.textContent='Unable to load case';});
+  controlsLoading(true);syncStageControls();
+  let initialized=false;
+  function initialize(){if(initialized)return;initialized=true;switchCase(root.dataset.defaultCase||'case-03');}
+  if('IntersectionObserver' in window){
+    const loader=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){loader.disconnect();initialize();}},{rootMargin:'300px'});
+    loader.observe(root);
+  }else initialize();
+  window.RingMatchDemo={selectStage,replayStage,pause,getState:()=>({caseId:d.id,stage:activeStage,scale:activeScale,time:state.time,playing:state.playing,loaded:state.loaded,stopAt:playUntil})};
   resize();
 })();
