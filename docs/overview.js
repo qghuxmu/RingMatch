@@ -1,597 +1,291 @@
-/* Replay recorded search, depth rings, and verifier decisions. */
+/* Explore recorded inference through linked, selectable data views. */
 (() => {
   'use strict';
-  let d=window.RINGMATCH_TRACE;
-  const root=document.querySelector('#rm-motion');
-  if(!d||!root)return;
-  const canvas=root.querySelector('canvas'),c=canvas.getContext('2d',{alpha:false});
-  const $=s=>root.querySelector(s),duration=102,baselineSpeed=1.6875;
-  const palette=['#d58b30','#238ac2','#aa70b4'];
-  const state={time:0,playing:false,last:0,raf:0,mobile:false,w:1120,h:650,scale:1,loaded:false,playRequested:false,userPaused:false,resumeOnEnter:false,phase:'',frames:[],frameCount:0};
-  let images={};
-  const stages={
-    sampling:{start:0,end:7.7,still:7.7,text:'Repeated coordinate predictions form several spatial hypotheses.'},
-    search:{start:10,end:58.5,still:57.5,text:'Each retained hypothesis defines a finer crop. Low-support branches are pruned as the search proceeds.'},
-    candidates:{start:59.3,end:63.8,still:63.5,text:'The two highest-ranked hypotheses are passed to verification.'},
-    rings:{start:64,end:80.4,still:80.3,text:'The ground ring is extracted from the highlighted depth band; aerial rings are predicted from candidate patches.'},
-    verification:{start:80.5,end:102,still:102,text:'The verifier compares both candidates using visual context and aligned ring profiles.'}
-  };
-  const searchScales={200:{start:10,end:19.3,still:18.3},100:{start:20,end:35.5,still:34},50:{start:36,end:58.5,still:57.5}};
-  let activeStage='sampling',activeScale=null,playUntil=duration,replayActive=false;
-  const stageButtons=[...root.querySelectorAll('[data-stage]')],scaleButtons=[...root.querySelectorAll('[data-search-scale]')];
-  const currentRange=()=>activeStage==='search'&&activeScale?searchScales[activeScale]:stages[activeStage];
-  const notifyInteraction=()=>document.dispatchEvent(new CustomEvent('ringmatch:interact'));
-  function syncStageControls(){
-    stageButtons.forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.stage===activeStage)));
-    scaleButtons.forEach(button=>button.setAttribute('aria-pressed',String(Number(button.dataset.searchScale)===activeScale)));
-    $('#rm-search-levels').hidden=activeStage!=='search';
-    $('#rm-stage-explanation').textContent=stages[activeStage].text;
-    root.dataset.stage=activeStage;
-  }
-  function selectStage(key,scale=null){
-    if(!stages[key]||!state.loaded)return;
-    notifyInteraction();pause(false);activeStage=key;activeScale=scale;replayActive=false;
-    state.playRequested=false;state.resumeOnEnter=false;state.userPaused=false;
-    state.time=currentRange().still;state.last=0;syncStageControls();render();updateButton();
-  }
-  stageButtons.forEach(button=>button.addEventListener('click',()=>selectStage(button.dataset.stage)));
-  scaleButtons.forEach(button=>button.addEventListener('click',()=>selectStage('search',Number(button.dataset.searchScale))));
+  const root=document.getElementById('rm-motion');
+  if(!root||!window.RINGMATCH_TRACE)return;
+  const $=selector=>root.querySelector(selector),panel=$('#rmx-panel');
+  const palette=['#d58b30','#238ac2','#aa70b4','#648d54'];
+  const esc=value=>String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
   const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,v));
-  const smooth=v=>{v=clamp(v);return v*v*v*(v*(v*6-15)+10);};
-  const u=(t,a,b)=>smooth((t-a)/(b-a));
-  const mix=(a,b,p)=>a+(b-a)*p;
-  const blend=(a,b,p)=>'#'+[1,3,5].map(i=>Math.round(mix(parseInt(a.slice(i,i+2),16),parseInt(b.slice(i,i+2),16),p)).toString(16).padStart(2,'0')).join('');
-  const rect=(a,b,p)=>({x:mix(a.x,b.x,p),y:mix(a.y,b.y,p),w:mix(a.w,b.w,p),h:mix(a.h??a.w,b.h??b.w,p)});
-  const n=id=>d.byId[id];
-  const kids=id=>d.nodes.filter(node=>node.parent===id).sort((a,b)=>a.p[1]-b.p[1]||a.p[0]-b.p[0]||a.id.localeCompare(b.id));
-  const family=node=>node.id==='root'?'#7b8c6a':palette[node.familyIndex%palette.length];
-  const score=value=>String(Math.round(value));
-  const probabilityText=value=>{
-    const percent=value*100;
-    return percent>0&&percent<.01?'<0.01%':percent>99.99&&percent<100?'>99.99%':percent.toFixed(2)+'%';
-  };
-  const chosen=label=>d.candidates.find(x=>x.label===label);
-  let shortlistedIds=new Set(d.candidates.map(candidate=>candidate.id));
-  function region(node,extent){const w=extent/400;return {x:clamp(node.p[0]-w/2,0,1-w),y:clamp(node.p[1]-w/2,0,1-w),w};}
-  function mapPoint(p,box,r){return {x:box.x+(p[0]-r.x)/r.w*box.w,y:box.y+(p[1]-r.y)/r.w*(box.h??box.w)};}
-  const withAlpha=(alpha,fn)=>{if(alpha<=.001)return;c.save();c.globalAlpha*=clamp(alpha);fn();c.restore();};
-  function text(str,x,y,size=13,color='#66765a',align='left',weight=400){c.font=`${weight} ${size}px "Helvetica Neue",Arial,sans-serif`;c.textAlign=align;c.textBaseline='alphabetic';c.fillStyle=color;c.fillText(str,x,y);}
-  function rounded(box,r=5){c.beginPath();c.roundRect(box.x,box.y,box.w,box.h??box.w,r);}
-  function circle(x,y,r,fill,stroke=null,width=1){c.beginPath();c.arc(x,y,Math.max(.01,r),0,Math.PI*2);if(fill){c.fillStyle=fill;c.fill();}if(stroke){c.strokeStyle=stroke;c.lineWidth=width;c.stroke();}}
-  function pill(str,x,y,color='#5b7543',size=12){c.font=`600 ${size}px Arial`;const w=c.measureText(str).width+13;rounded({x:x-w/2,y:y-12,w,h:20},5);c.fillStyle=color;c.fill();text(str,x,y+2,size,'#fff','center',600);}
-  function imageIn(img,box,{cover=false}={}){
-    if(!img?.complete||!img.naturalWidth){c.fillStyle='#eef2e9';c.fillRect(box.x,box.y,box.w,box.h??box.w);return;}
-    const h=box.h??box.w;let sx=0,sy=0,sw=img.naturalWidth,sh=img.naturalHeight;
-    if(cover){const target=box.w/h;if(sw/sh>target){const w=sh*target;sx=(sw-w)/2;sw=w;}else{const height=sw/target;sy=(sh-height)*.43;sh=height;}}
-    c.drawImage(img,sx,sy,sw,sh,box.x,box.y,box.w,h);
+  let d=window.RINGMATCH_TRACE,loadVersion=0,lastRequested='',initialized=false;
+  const state={view:'search',input:'root',group:null,points:'clusters',showPruned:true,inspected:null,angle:null,pinned:false,ground:true,aerial:true,loaded:false,extracting:false};
+  const views=['search','rings','verification'];
+  let animation=0,extractionStart=0,lastPaintedInput='';
+  const announce=text=>$('#rmx-explanation').textContent=text;
+  const interact=()=>document.dispatchEvent(new CustomEvent('ringmatch:interact'));
+  const node=id=>d.byId[id];
+  const children=id=>d.nodes.filter(n=>n.parent===id).sort((a,b)=>a.p[1]-b.p[1]||a.p[0]-b.p[0]||a.id.localeCompare(b.id));
+  function orderedNodes(){const result=[];function visit(n){result.push(n);children(n.id).forEach(visit);}visit(node('root'));return result;}
+  const color=n=>n.id==='root'?'#738c5f':palette[n.familyIndex%palette.length];
+  const candidateFor=id=>d.candidates.find(c=>c.id===id);
+  const inputNode=()=>node(state.input)||node('root');
+  const activeGroup=()=>inputNode().groups?.[state.group]||null;
+  const selectedNode=()=>node(activeGroup()?.child)||inputNode();
+  function ancestors(n){const path=[];while(n){path.unshift(n);n=n.parent?node(n.parent):null;}return path;}
+  const scale=n=>n.depth<4?d.config.schedule[n.depth]:null;
+  function nodeName(n){const candidate=candidateFor(n.id),index=orderedNodes().filter(item=>item.depth===n.depth).findIndex(item=>item.id===n.id)+1;return n.id==='root'?'Full region':candidate?'Candidate '+candidate.label:n.depth<4?scale(n)+' m branch '+index:'Final hypothesis '+index;}
+  function percentage(p){const v=p*100;return v<.01?v.toFixed(4)+'%':v>99.99?v.toFixed(4)+'%':v.toFixed(2)+'%';}
+  function svgImage(box,{overlay='',label='Aerial image',className='',map=false}={}){
+    const h=box.h??box.w;
+    return `<svg class="rmx-map-svg ${className}" viewBox="0 0 1000 1000" ${map?'':'role="img"'} aria-label="${esc(label)}"><image href="${esc(d.assets.aerial)}" x="${-box.x/box.w*1000}" y="${-box.y/h*1000}" width="${1000/box.w}" height="${1000/h}" preserveAspectRatio="none"/>${overlay}</svg>`;
   }
-  function cropImage(r,box,color='#a2b18e',opacity=1,dim=.08){
-    withAlpha(opacity,()=>{c.save();rounded(box,5);c.clip();if(images.aerial?.naturalWidth)c.drawImage(images.aerial,r.x*images.aerial.naturalWidth,r.y*images.aerial.naturalHeight,r.w*images.aerial.naturalWidth,r.w*images.aerial.naturalHeight,box.x,box.y,box.w,box.h??box.w);else{c.fillStyle='#edf1e7';c.fillRect(box.x,box.y,box.w,box.h??box.w);}c.fillStyle=`rgba(20,30,14,${dim})`;c.fillRect(box.x,box.y,box.w,box.h??box.w);c.restore();rounded(box,5);c.strokeStyle='#fff';c.lineWidth=4;c.stroke();rounded(box,5);c.strokeStyle=color;c.lineWidth=1.35;c.stroke();});
+  function relativePoint(p,box){return [(p[0]-box.x)/box.w*1000,(p[1]-box.y)/(box.h??box.w)*1000];}
+  function boxOverlay(box,within,stroke,dashed=false){
+    const [x,y]=relativePoint([box.x,box.y],within);
+    return `<rect x="${x}" y="${y}" width="${box.w/within.w*1000}" height="${(box.h??box.w)/(within.h??within.w)*1000}" fill="${stroke}18" stroke="white" stroke-width="13"/><rect x="${x}" y="${y}" width="${box.w/within.w*1000}" height="${(box.h??box.w)/(within.h??within.w)*1000}" fill="none" stroke="${stroke}" stroke-width="7" ${dashed?'stroke-dasharray="19 11"':''}/>`;
   }
-  function cubic(a,b,p,bend=0){const dx=b.x-a.x,dy=b.y-a.y,p1={x:a.x+dx*.46,y:a.y+bend},p2={x:b.x-dx*.46,y:b.y-bend};const q=1-p;return {x:q*q*q*a.x+3*q*q*p*p1.x+3*q*p*p*p2.x+p*p*p*b.x,y:q*q*q*a.y+3*q*q*p*p1.y+3*q*p*p*p2.y+p*p*p*b.y};}
-  function connection(a,b,progress,color,width=1.5,{alpha=1,bend=0}={}){
-    if(progress<=0)return;withAlpha(alpha,()=>{c.beginPath();c.moveTo(a.x,a.y);const steps=34;for(let i=1;i<=steps;i++){const p=cubic(a,b,progress*i/steps,bend);c.lineTo(p.x,p.y);}c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.stroke();});
+  function treePositions(){
+    const positions=new Map(),leaves=[];
+    function visit(n){const kids=children(n.id);if(!kids.length){leaves.push(n);return;}kids.forEach(visit);}
+    visit(node('root'));
+    const height=368,step=(height-42)/Math.max(1,leaves.length-1);
+    leaves.forEach((n,i)=>positions.set(n.id,{x:18+n.depth*55,y:leaves.length===1?height/2:28+i*step}));
+    function locate(n){if(positions.has(n.id))return positions.get(n.id);const kids=children(n.id).map(locate);const p={x:18+n.depth*55,y:kids.reduce((sum,p)=>sum+p.y,0)/kids.length};positions.set(n.id,p);return p;}
+    locate(node('root'));return positions;
   }
-  function vertical(index,count,x,maxSize){const pitch=575/Math.max(1,count),w=Math.min(maxSize,pitch-22);return {x,y:45+index*pitch+(pitch-w-18)/2,w};}
-  function mobileRow(index,count,y,maxSize=110){const pitch=520/Math.max(1,count),w=Math.min(maxSize,pitch-15);return {x:20+index*pitch+(pitch-w)/2,y,w};}
-  function mobilePool(index,count,y){const cols=Math.min(4,count),rows=Math.ceil(count/cols),w=Math.min(105,520/cols-20);return {x:20+(index%cols)*520/cols+(520/cols-w)/2,y:y+Math.floor(index/cols)*140,w};}
-  function layout(){
-    if(!state.mobile)return {root:{x:24,y:223,w:268},pano:{x:24,y:72,w:268,h:105},col200:kids('root').map((node,i)=>vertical(i,kids('root').length,365,156)),all100:i=>vertical(i,column100Order.length,625,76),kept100:i=>vertical(i,kept100Order.length,625,100),all50:i=>vertical(i,pool50Order.length,835,76),col50:i=>vertical(i,col50Order.length,825,96),shortlist:i=>({x:975,y:168+i*210,w:120}),verify:{pano:{x:35,y:76,w:400,h:125},depth:{x:35,y:270,w:400,h:125},ring:{x:235,y:520,r:80},patches:[{x:580,y:76,w:190},{x:870,y:76,w:190}],predictor:{x:580,y:328,w:480,h:46},plots:[{x:675,y:520,r:80},{x:965,y:520,r:80}],model:{x:783,y:570,w:207,h:43},output:{x:35,y:229,w:380}}};
-    return {root:{x:155,y:186,w:250},pano:{x:155,y:62,w:250,h:86},col200:kids('root').map((node,i)=>mobileRow(i,kids('root').length,500,145)),all100:i=>mobilePool(i,column100Order.length,760),kept100:i=>mobileRow(i,kept100Order.length,820),all50:i=>mobilePool(i,pool50Order.length,1000),col50:i=>mobileRow(i,col50Order.length,1040),shortlist:i=>({x:118+i*215,y:1230,w:130}),verify:{pano:{x:65,y:82,w:430,h:130},depth:{x:65,y:326,w:430,h:130},ring:{x:280,y:629,r:80},patches:[{x:60,y:795,w:180},{x:320,y:795,w:180}],predictor:{x:60,y:1015,w:440,h:46},plots:[{x:150,y:1210,r:80},{x:410,y:1210,r:80}],model:{x:170,y:1332,w:220,h:48},output:{x:65,y:282,w:430}}};
-  }
-  let column100Order,kept100Order,col50Order,pool50Order;
-  function updateOrders(){
-    shortlistedIds=new Set(d.candidates.map(candidate=>candidate.id));
-    column100Order=kids('root').filter(parent=>parent.kept).flatMap(parent=>kids(parent.id).map(node=>node.id));
-    kept100Order=column100Order.filter(id=>n(id).kept);
-    pool50Order=kept100Order.flatMap(id=>kids(id).map(node=>node.id));
-    col50Order=pool50Order.filter(id=>n(id).kept);
-  }
-  updateOrders();
-  function searchView(node,t=state.time){
-    const expand=node.depth===1?u(t,18.5,19.5)*(1-u(t,24.3,25)):node.depth===2?u(t,34.5,35.5)*(1-u(t,40.3,41)):0;
-    return expand&&node.zoomContext?rect(node.input,node.zoomContext,expand):node.input;
-  }
-  function box100(id,t,L){const initial=L.all100(column100Order.indexOf(id)),k=kept100Order.indexOf(id);return k<0?initial:rect(initial,L.kept100(k),u(t,28,29.5));}
-  function sourceCrop(parent,child,parentBox,extent){const a=searchView(parent),b=child.input||region(child,extent);return {x:parentBox.x+(b.x-a.x)/a.w*parentBox.w,y:parentBox.y+(b.y-a.y)/a.w*parentBox.w,w:b.w/a.w*parentBox.w};}
-  function card(node,box,extent,opacity,scoreProgress=1,dim=.09,rejected=0){
-    // Use the recorded next request bounds, including boundary-adjusted crops.
-    const r=searchView(node)||region(node,extent);
-    cropImage(r,box,blend(family(node),'#b6bcae',rejected),opacity,dim+rejected*.62);
-    if(node.input&&r.w>node.input.w+1e-5){
-      const point=mapPoint([node.input.x,node.input.y],box,r),query={x:point.x,y:point.y,w:node.input.w/r.w*box.w};
-      withAlpha(opacity,()=>{c.save();rounded(box,5);c.clip();
-        c.setLineDash([3,3]);c.strokeStyle='#fff';c.lineWidth=2.7;c.strokeRect(query.x,query.y,query.w,query.w);c.strokeStyle='#526647';c.lineWidth=.9;c.strokeRect(query.x,query.y,query.w,query.w);c.setLineDash([]);
-        c.fillStyle='#4e6248dd';c.fillRect(query.x+2,query.y+2,25,12);text('Input',query.x+5,query.y+11,8,'#fff');c.restore();});
-    }
-    const supportGap=node.depth>=2?14:17;
-    withAlpha(opacity,()=>{text('S '+score(node.score),box.x+box.w/2,box.y+box.w+supportGap,state.mobile?13:10.5,blend('#6b7c5d','#a0a99a',rejected),'center',500);});
-  }
-  function samples(node,box,start,clusterAt,t,{root=false,shortlist=false}={}){
-    if(!node.points||t<start)return;
-    const r=searchView(node),grouping=u(t,clusterAt,clusterAt+1.15);
-    const scale=root?1:clamp(box.w/140,.68,1),dot=root?3.5:2.5*scale,stagger=root?.145:.115;
-    // Predictions appear at their sampled coordinates. Clustering never moves them.
-    node.points.forEach((raw,i)=>{
-      const a=u(t,start+i*stagger,start+i*stagger+.32);
-      if(!a)return;
-      const group=node.groups.find(g=>g.members.includes(i)),child=group.child?n(group.child):null;
-      const rejected=shortlist&&child&&!shortlistedIds.has(child.id)?u(t,55,56.3):0;
-      const p=mapPoint(raw,box,r),alpha=a*(child?1:1-grouping*.8)*(1-rejected*.82);
-      if(p.x<box.x||p.x>box.x+box.w||p.y<box.y||p.y>box.y+box.w)return;
-      withAlpha(alpha,()=>circle(p.x,p.y,dot,blend(blend('#2399d4',child?family(child):'#a4ad99',grouping),'#c8cec0',rejected),'#fff',root?1.25:1));
+  function treeHTML(){
+    const positions=treePositions(),selected=selectedNode(),path=new Set(ancestors(selected).map(n=>n.id));
+    const headings=['400','200','100','50','Final'];
+    let svg=`<svg class="rmx-tree" viewBox="0 0 260 410" aria-label="Recorded search tree">${headings.map((text,i)=>`<text x="${18+i*55}" y="12" text-anchor="middle" font-size="9" fill="#8b977f">${text}${i<4?' m':''}</text>`).join('')}`;
+    d.nodes.filter(n=>n.parent).forEach(n=>{
+      const a=positions.get(n.parent),b=positions.get(n.id),on=path.has(n.id),dim=!n.kept;
+      svg+=`<path class="rmx-edge" data-edge="${esc(n.id)}" d="M${a.x+9},${a.y+27} C${a.x+29},${a.y+27} ${b.x-29},${b.y+27} ${b.x-9},${b.y+27}" stroke="${color(n)}" stroke-width="${on?2:1.1}" opacity="${dim?(state.showPruned?.35:.06):on?.95:.4}"/>`;
     });
-    withAlpha(u(t,start+.1,start+.6)*(1-grouping),()=>pill(String(Math.min(node.points.length,Math.max(0,Math.floor((t-start)/stagger)+1))),box.x+box.w-15,box.y+17,'#435e38',root?12:10));
-    // Group boundaries and centroid symbols fade in while the observations stay visible.
-    kids(node.id).forEach(child=>{
-      const rejected=shortlist&&!shortlistedIds.has(child.id)?u(t,55,56.3):0,color=blend(family(child),'#c8cec0',rejected);
-      withAlpha(grouping*(1-rejected*.82),()=>{
-      const pts=child.members.map(i=>mapPoint(node.points[i],box,r)),p=mapPoint(child.p,box,r);
-      if(p.x<box.x||p.x>box.x+box.w||p.y<box.y||p.y>box.y+box.w)return;
-      const rx=Math.max(root?12:8,...pts.map(q=>Math.abs(q.x-p.x)+(root?6:4)));
-      const ry=Math.max(root?12:8,...pts.map(q=>Math.abs(q.y-p.y)+(root?6:4)));
-      c.beginPath();c.ellipse(p.x,p.y,rx,ry,0,0,Math.PI*2);c.strokeStyle=color;c.lineWidth=1.3;c.stroke();
-      const arm=root?4.5:3;
-      c.beginPath();c.moveTo(p.x-arm,p.y);c.lineTo(p.x+arm,p.y);c.moveTo(p.x,p.y-arm);c.lineTo(p.x,p.y+arm);
-      c.strokeStyle='#fff';c.lineWidth=3;c.stroke();c.strokeStyle=color;c.lineWidth=1.4;c.stroke();
-      pill(String(child.count),p.x,p.y-ry-10,color,root?12:10);
-    });});
-  }
-  function cropRevealBox(box,progress){
-    const scale=mix(.88,1,progress),inset=box.w*(1-scale)/2;
-    return {x:box.x+inset,y:box.y+inset,w:box.w*scale};
-  }
-  function cropGuide(parent,child,parentBox,childBox,extent,start,t){
-    const alpha=u(t,start-.45,start-.05)*(1-u(t,start+2.65,start+3.5));
-    if(alpha<=0)return;
-    const source=sourceCrop(parent,child,parentBox,extent),color=family(child),progress=u(t,start+.05,start+.80);
-    // Matching corners make the crop-to-inset correspondence explicit; no image tile flies across the tree.
-    const x0=clamp(source.x,parentBox.x,parentBox.x+parentBox.w),x1=clamp(source.x+source.w,parentBox.x,parentBox.x+parentBox.w),y0=clamp(source.y,parentBox.y,parentBox.y+parentBox.w),y1=clamp(source.y+source.w,parentBox.y,parentBox.y+parentBox.w);
-    const from=state.mobile?[{x:x0,y:y1},{x:x1,y:y1}]:[{x:x1,y:y0},{x:x1,y:y1}];
-    const to=state.mobile?[{x:childBox.x,y:childBox.y},{x:childBox.x+childBox.w,y:childBox.y}]:[{x:childBox.x,y:childBox.y},{x:childBox.x,y:childBox.y+childBox.w}];
-    from.forEach((point,i)=>connection(point,to[i],progress,color,1.1,{alpha:alpha*.48}));
-    withAlpha(alpha,()=>{
-      c.fillStyle=color+'16';c.fillRect(source.x,source.y,source.w,source.w);
-      c.strokeStyle='#fff';c.lineWidth=3.6;c.strokeRect(source.x,source.y,source.w,source.w);
-      c.strokeStyle=color;c.lineWidth=1.7;c.strokeRect(source.x,source.y,source.w,source.w);
-      const arm=Math.min(9,source.w*.18);
-      c.beginPath();[[0,0,1,1],[1,0,-1,1],[0,1,1,-1],[1,1,-1,-1]].forEach(([x,y,dx,dy])=>{const px=source.x+x*source.w,py=source.y+y*source.w;c.moveTo(px+dx*arm,py);c.lineTo(px,py);c.lineTo(px,py+dy*arm);});
-      c.strokeStyle=color;c.lineWidth=2.8;c.stroke();
+    d.nodes.forEach(n=>{
+      const p=positions.get(n.id),candidate=candidateFor(n.id),selectedHere=selected.id===n.id,off=!n.kept&&!state.showPruned;
+      const label=n.id==='root'?'○':candidate?candidate.label:n.count;
+      svg+=`<g class="rmx-node ${off?'rmx-node-off':''}" data-node="${esc(n.id)}" role="button" tabindex="${off?-1:0}" aria-label="${esc(nodeName(n)+', '+(n.id==='root'?'16 samples':n.count+' points, cumulative support '+n.score)+(n.kept?'':', pruned'))}" aria-pressed="${selectedHere}" transform="translate(${p.x},${p.y+27})" opacity="${off?.12:!n.kept?.45:1}"><title>${esc(nodeName(n)+(n.id==='root'?'':' · S '+n.score)+(n.kept?'':' · Pruned'))}</title><rect x="-17" y="-17" width="34" height="34" fill="transparent"/><circle class="rmx-node-halo" r="15"/><circle r="10" fill="${selectedHere?color(n):'#fff'}" stroke="${color(n)}" stroke-width="${candidate?2:1.4}" ${n.kept?'':'stroke-dasharray="3 2"'}/><text text-anchor="middle" y="3.2" font-size="${candidate?11:9}" fill="${selectedHere?'#fff':color(n)}" font-weight="${candidate?600:400}">${label}</text></g>`;
     });
+    svg+='</svg>';
+    const options=orderedNodes().filter(n=>n.id==='root'||state.showPruned||n.kept).map(n=>`<option value="${esc(n.id)}" ${selected.id===n.id?'selected':''}>${'↳ '.repeat(n.depth)}${esc(nodeName(n))}${n.id==='root'?'':' · S '+n.score}${n.kept?'':' · Pruned'}</option>`).join('');
+    return `<div class="rmx-tree-pane"><p class="rmx-panel-label">Search tree <small>M = 16 · B = 4</small></p>${svg}<label class="rmx-prune"><input type="checkbox" id="rmx-show-pruned" ${state.showPruned?'checked':''}>Show pruned branches</label><div class="rmx-mobile-nodes"><label for="rmx-node-select">Branch</label><select id="rmx-node-select">${options}</select></div></div>`;
   }
-  function headers(t,L){
-    text('Multi-hypothesis search',24,27,15,'#3d5132','left',550);
-    if(!state.mobile){
-      text('400 m',L.root.x+L.root.w/2,L.root.y-12,12,'#819171','center');
-      const headerY=28,initial100=L.all100(0),retained100=L.kept100(0);
-      withAlpha(u(t,10,11),()=>text('200 m',L.col200[0].x+L.col200[0].w/2,headerY,12,'#819171','center'));
-      withAlpha(u(t,20,21),()=>text('100 m',mix(initial100.x+initial100.w/2,retained100.x+retained100.w/2,u(t,28,29.5)),headerY,12,'#819171','center'));
-      withAlpha(u(t,36,37),()=>text('50 m',L.col50(0).x+L.col50(0).w/2,headerY,12,'#819171','center'));
-      withAlpha(u(t,59.3,60),()=>text('Top 2',L.shortlist(0).x+L.shortlist(0).w/2,headerY,12,'#819171','center'));
-    }else{
-      text('400 m',280,L.root.y-14,16,'#7a8d69','center');
-      withAlpha(u(t,10,11),()=>text('200 m',280,476,16,'#7a8d69','center'));
-      withAlpha(u(t,20,21),()=>text('100 m',280,735,16,'#7a8d69','center'));
-      withAlpha(u(t,36,37),()=>text('50 m',280,976,16,'#7a8d69','center'));
-      withAlpha(u(t,59.3,60),()=>text('Top 2',280,1208,16,'#7a8d69','center'));
-    }
-  }
-  function pool50Box(index,t,L){
-    const initial=L.all50(index);
-    const id=pool50Order[index],k=col50Order.indexOf(id);
-    return k<0?initial:rect(initial,L.col50(k),u(t,44,45.5));
-  }
-  function survivorOutline(box,node,progress){
-    withAlpha(progress,()=>{rounded({x:box.x-2,y:box.y-2,w:box.w+4,h:box.w+4},6);c.strokeStyle=family(node);c.lineWidth=2;c.stroke();});
-  }
-  function leafScores(t,L){
-    if(t<51)return;
-    col50Order.forEach((id,index)=>{
-      const parent=n(id),b=L.col50(index);kids(id).forEach((leaf,j)=>{
-        const source=mapPoint(leaf.p,b,parent.input);
-        const siblings=kids(id),target=state.mobile?{x:b.x+b.w*(j+1)/(siblings.length+1),y:1180}:{x:958,y:b.y+17+j*Math.min(26,(b.w-10)/siblings.length)};
-        const p=u(t,51+j*.12,52.5+j*.12),best=shortlistedIds.has(leaf.id),retention=u(t,55,56.3),rejected=best?0:retention;
-        const shortlistFade=u(t,58.9,59.3),alpha=p*(1-shortlistFade)*(1-rejected*.7),color=blend(family(leaf),'#c8cec0',rejected);
-        connection(source,target,p,color,mix(1.2,best?2:1,retention),{alpha:alpha*(1-rejected*.6)});
-        withAlpha(alpha,()=>{
-          circle(source.x,source.y,3.2,color,'white',1.4);
-          circle(target.x,target.y,mix(4,best?6:3.5,retention),color,'white',1.6);
-          text(score(leaf.score),target.x+(state.mobile?0:10),target.y+(state.mobile?20:4),state.mobile?11:11,rejected>.5?'#a5aea0':'#536d3e',state.mobile?'center':'left',best&&retention>.5?600:400);
-        });
-      });
+  function samplesSVG(){
+    const n=inputNode(),groups=n.groups||[],chosen=activeGroup(),selectedMembers=new Set(chosen?.members||[]),clip=[];
+    const groupColors=new Map();groups.forEach(g=>g.members.forEach(i=>groupColors.set(i,g.child?color(node(g.child)):'#a7b09c')));
+    let overlay='';
+    (n.points||[]).forEach((point,i)=>{
+      const [x,y]=relativePoint(point,n.input),outside=x<0||x>1000||y<0||y>1000;
+      if(outside){clip.push(i);return;}
+      overlay+=`<circle class="rmx-sample" data-sample="${i}" cx="${x}" cy="${y}" r="8" fill="${state.points==='raw'?'#e9f4dd':groupColors.get(i)}" stroke="white" stroke-width="3" opacity="${chosen&&!selectedMembers.has(i)?.25:1}"/>`;
     });
-  }
-  function drawSearch(t,L){
-    headers(t,L);
-    const rootNode=n('root'),children=kids('root');
-    const spawn200=children.map((node,i)=>{const start=10+i*.58,p=u(t,start+.65,start+2.25),end=L.col200[i];return {node,start,p,box:cropRevealBox(end,p),end};});
-    spawn200.forEach(({node,p,end})=>connection(mapPoint(node.p,L.root,rootNode.input),{x:end.x,y:end.y+end.w/2},p,family(node),1.5+node.count*.14,{alpha:p*(1-u(t,9.55,10)* (1-u(t,13.8,14.7)))}));
-    // Replay the recorded global pruning decision, then compact the retained hypotheses.
-    const out100=column100Order.map((id,i)=>{
-      const node=n(id),parent=n(node.parent),pb=L.col200[children.findIndex(x=>x.id===parent.id)];
-      const start=20+(i%2)*.8,p=u(t,start+.65,start+2.3),target=box100(id,t,L),rejected=node.kept?0:u(t,25,26.5);
-      return {node,parent,start,p,target,box:cropRevealBox(target,p),rejected,alpha:p*(node.kept?1:1-u(t,28,29.5)),pb};
+    if(state.points==='clusters')groups.forEach((g,i)=>{
+      const [x,y]=relativePoint(g.p,n.input),inside=x>=0&&x<=1000&&y>=0&&y<=1000;
+      if(!inside)return;
+      const c=g.child?color(node(g.child)):'#8b9980',chosenHere=state.group===i;
+      const points=g.members.map(index=>relativePoint(n.points[index],n.input));
+      const rx=Math.max(26,...points.map(p=>Math.abs(p[0]-x)+12)),ry=Math.max(26,...points.map(p=>Math.abs(p[1]-y)+12));
+      const labelY=clamp(y-ry-28,25,965),labelX=clamp(x,32,968);
+      overlay+=`<g class="rmx-group" data-group="${i}" role="button" tabindex="0" aria-label="Cluster ${i+1}, ${g.count} ${g.count===1?'point':'points'}${g.child&&!node(g.child).kept?', pruned':''}" aria-pressed="${chosenHere}"><ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="${c}${chosenHere?'35':'14'}" stroke="white" stroke-width="8"/><ellipse cx="${x}" cy="${y}" rx="${rx}" ry="${ry}" fill="none" stroke="${c}" stroke-width="${chosenHere?6:3.5}"/><path d="M${x-13},${y}h26 M${x},${y-13}v26" stroke="white" stroke-width="8"/><path d="M${x-13},${y}h26 M${x},${y-13}v26" stroke="${c}" stroke-width="3.5"/><rect x="${labelX-27}" y="${labelY-22}" width="54" height="43" rx="9" fill="${c}"/><text x="${labelX}" y="${labelY+9}" text-anchor="middle" fill="white" font-size="29" font-weight="600">${g.count}</text><ellipse class="rmx-hit" cx="${x}" cy="${y}" rx="${Math.max(rx,33)}" ry="${Math.max(ry,33)}" fill="transparent"/><rect class="rmx-hit" x="${labelX-31}" y="${labelY-25}" width="62" height="51" fill="transparent"/></g>`;
     });
-    out100.forEach(o=>connection(mapPoint(o.node.p,o.pb,searchView(o.parent)),{x:o.target.x,y:o.target.y+o.target.w/2},o.p,blend(family(o.node),'#cbd0c5',o.rejected),1.8,{alpha:o.alpha*(1-u(t,19.55,20)*(1-u(t,23.45,24.3)))}));
-    // All recorded alternatives precede the next global top-B decision.
-    const all50=pool50Order.map((id,i)=>{
-      const node=n(id),parent=n(node.parent),pb=box100(parent.id,t,L),start=36+(i%2)*.8,p=u(t,start+.65,start+2.3),target=pool50Box(i,t,L);
-      const rejected=node.kept?0:u(t,41,42.5);
-      return {node,parent,start,p,pb,target,box:cropRevealBox(target,p),rejected,alpha:p*(node.kept?1:1-u(t,44,45.5))};
+    return {svg:svgImage(n.input,{overlay,label:`${scale(n)} m input with ${n.points?.length||0} coordinate samples`,map:true}),outside:clip.length};
+  }
+  function mapHTML(){
+    const n=inputNode(),samples=samplesSVG();
+    const crumbs=ancestors(n).map(a=>`<button type="button" data-node="${esc(a.id)}" aria-current="${a.id===n.id}">${a.id==='root'?'400 m':scale(a)+' m'}</button>`).join('<span>›</span>');
+    return `<div class="rmx-map-pane"><div class="rmx-breadcrumb" aria-label="Crop ancestry">${crumbs}</div><img class="rmx-input-pano" src="${esc(d.assets.pano)}" alt="Ground panorama"><div class="rmx-map-wrap" id="rmx-active-map">${samples.svg}</div><div class="rmx-map-tools"><div class="rmx-switch" role="group" aria-label="Coordinate display"><button type="button" data-points="raw" aria-pressed="${state.points==='raw'}">Raw points</button><button type="button" data-points="clusters" aria-pressed="${state.points==='clusters'}">Clusters</button></div><span>${n.points?.length||0} samples${samples.outside?' · '+samples.outside+' outside crop':''}</span></div></div>`;
+  }
+  function rankInfo(n){const level=d.levels[n.depth-1];return level?{level,rank:level.ranking.indexOf(n.id)+1}:null;}
+  function nodeSummary(n){
+    if(n.id==='root')return `<p class="rmx-summary">400 m aerial region</p><dl class="rmx-stat-list"><div><dt>Coordinate samples</dt><dd>${n.points.length}</dd></div><div><dt>Spatial hypotheses</dt><dd>${children(n.id).length}</dd></div><div><dt>Expansion budget</dt><dd>Up to ${d.config.budget}</dd></div></dl>`;
+    const rank=rankInfo(n),candidate=candidateFor(n.id),terminal=n.depth===4;
+    return `<p class="rmx-summary">${esc(nodeName(n))}</p><dl class="rmx-stat-list"><div><dt>Cluster size</dt><dd>${n.count} points</dd></div><div><dt>Cumulative support</dt><dd>${n.path.join(' + ')} = <strong>${n.score}</strong></dd></div><div><dt>${terminal?'Search rank':'Level rank'}</dt><dd>${rank?.rank||'–'} / ${rank?.level.ranking.length||'–'}</dd></div><div><dt>Status</dt><dd>${candidate?'Top 2':terminal?'Not shortlisted':n.kept?'Retained':'Pruned'}</dd></div></dl>`;
+  }
+  function inspectorHTML(){
+    const current=inputNode(),group=activeGroup(),selected=selectedNode(),candidate=candidateFor(selected.id);
+    const info=group&&!group.child?`<p class="rmx-summary">Unexpanded sample group</p><p class="rmx-quiet">${group.count} ${group.count===1?'point':'points'}; no search branch was recorded for this group.</p>`:nodeSummary(selected);
+    const groups=current.groups||[];
+    let action='';
+    if(group?.child){if(selected.queried)action=`<button type="button" class="rmx-action" data-open="${esc(selected.id)}">Open ${scale(selected)} m crop <span aria-hidden="true">→</span></button>`;
+      else if(candidate)action=`<button type="button" class="rmx-action" data-verify="${candidate.label}">Inspect candidate ${candidate.label} <span aria-hidden="true">→</span></button>`;
+      else action=`<p class="rmx-quiet">${selected.kept?'No further crop was evaluated.':'This branch was not expanded.'}</p>`;
+    }else if(candidate)action=`<button type="button" class="rmx-action" data-verify="${candidate.label}">Inspect candidate ${candidate.label} →</button>`;
+    const list=groups.map((g,i)=>`<button type="button" data-group="${i}" aria-pressed="${state.group===i}"><span><i class="rmx-dot" style="--branch:${g.child?color(node(g.child)):'#aab39e'}"></i>Cluster ${i+1}</span><span>${g.count} ${g.count===1?'point':'points'}</span></button>`).join('');
+    const target=group?.child?selected:current;
+    const position=target.id!=='root'&&target.input?`<div class="rmx-mini"><p>Position in aerial region</p><div class="rmx-map-wrap">${svgImage({x:0,y:0,w:1},{overlay:(target.parent&&node(target.parent).id!=='root'?boxOverlay(node(target.parent).input,{x:0,y:0,w:1},'#a4ad9a',true):'')+boxOverlay(target.input,{x:0,y:0,w:1},color(target)),label:'Actual crop position in the original aerial image'})}</div></div>`:'';
+    const rank=rankInfo(selected);
+    const ranking=rank?`<details class="rmx-ranking"><summary>${selected.depth===4?'Final ranking':'Level ranking'}</summary>${rank.level.ranking.map((id,i)=>{const item=node(id);return `<button type="button" class="rmx-rank-row ${item.kept?'':'rmx-pruned-row'}" data-node="${esc(id)}" aria-pressed="${id===selected.id}"><span>${i+1}</span><span>${candidateFor(id)?'Candidate '+candidateFor(id).label:item.kept?'Retained':'Pruned'}</span><span>${item.score}</span></button>`;}).join('')}</details>`:'';
+    return `<aside class="rmx-inspector" aria-label="Selected hypothesis details"><p class="rmx-panel-label">${group?'Selected cluster':'Current input'}</p>${info}${action}${!group?`<p class="rmx-quiet">Select a cluster to see its support and next crop.</p><div class="rmx-count-list">${list}</div>`:`<button type="button" class="rmx-origin" data-clear-group>← Back to input</button>`}${position}${ranking}</aside>`;
+  }
+  function renderSearch(){panel.innerHTML=`<div class="rmx-search">${treeHTML()}${mapHTML()}${inspectorHTML()}</div>`;const key=d.id+':'+state.input;if(lastPaintedInput&&key!==lastPaintedInput)$('#rmx-active-map').classList.add('rmx-crossfade');lastPaintedInput=key;announce('Select a tree node to open its input; select a cluster to inspect its support.');}
+  function inspectNode(id){
+    const n=node(id);if(!n)return;
+    state.group=null;
+    if(n.id==='root'||n.queried){state.input=id;}
+    else {state.input=n.parent;state.group=(node(n.parent).groups||[]).findIndex(g=>g.child===id);if(state.group<0)state.group=null;}
+    state.view='search';render();
+    announce(n.id==='root'?'16 predictions form spatial hypotheses.':`${nodeName(n)}: ${n.count} points; cumulative support ${n.path.join(' + ')} = ${n.score}.${n.kept?'':' This branch was pruned.'}`);
+  }
+  function chooseGroup(index){
+    if(!inputNode().groups?.[index])return;
+    state.group=index;
+    if(state.points==='raw')state.points='clusters';
+    renderSearch();
+    const g=activeGroup(),n=node(g.child);announce(n?`${g.count} points support this hypothesis. Cumulative support: ${n.path.join(' + ')} = ${n.score}.${n.kept?'':' This branch was pruned.'}`:`${g.count} unexpanded ${g.count===1?'sample':'samples'}.`);
+  }
+  function polarPath(values,progress=1){
+    let path='';for(let i=0;i<=Math.floor(clamp(progress)*359);i++){const r=values[i]/80*86,a=i*Math.PI/180;path+=(i?'L':'M')+(110+Math.sin(a)*r).toFixed(3)+','+(110-Math.cos(a)*r).toFixed(3);}
+    return path+(progress>=1?'Z':'');
+  }
+  function polarSVG(key,{comparison=false,interactive=true}={}){
+    const candidate=d.candidates.find(c=>c.label===key),c=key==='ground'?'#48543e':color(candidate),values=d.displayRings[key];
+    const ground=comparison?`<path data-contour="ground" d="${polarPath(d.displayRings.ground)}" fill="none" stroke="#48543e" stroke-width="1.65" ${state.ground?'':'opacity="0"'}/>`:'';
+    const ring=`<path data-contour="${key==='ground'?'ground':'aerial'}" data-ring-path="${key}" d="${polarPath(values)}" fill="none" stroke="${c}" stroke-width="${comparison?2.4:2}" stroke-linejoin="round" ${comparison&&!state.aerial?'opacity="0"':''}/>`;
+    return `<svg class="rmx-polar" data-ring="${key}" viewBox="0 0 220 220" ${interactive?`role="slider" tabindex="0" aria-label="Inspect ${key==='ground'?'ground':'candidate '+key} ring direction" aria-valuemin="0" aria-valuemax="359" aria-valuenow="${state.angle??0}" aria-valuetext="${state.angle===null?'No direction selected':state.angle+' degrees'}"`:'role="img" aria-label="Ground depth ring"'}>${[.25,.5,.75,1].map(r=>`<circle cx="110" cy="110" r="${r*86}" fill="none" stroke="#e0e7d9" stroke-width=".7"/>`).join('')}<path d="M24 110H196 M110 24V196" stroke="#e5eadf" stroke-width=".65"/>${ground}${ring}<g data-direction-marker ${state.angle===null?'visibility="hidden"':''}><path data-direction-line fill="none" stroke="#98a68b" stroke-width=".8" stroke-dasharray="3 3"/>${comparison?'<circle data-ground-dot r="2.7" fill="#48543e" stroke="white" stroke-width=".8"/>':''}<circle data-direction-dot r="3" fill="${c}" stroke="white" stroke-width=".8"/></g></svg>`;
+  }
+  function candidatePatch(candidate){
+    const [x,y]=relativePoint(candidate.p,candidate.crop);
+    return svgImage(candidate.crop,{label:'Candidate '+candidate.label+' aerial patch',overlay:`<circle cx="${x}" cy="${y}" r="18" fill="${color(candidate)}" stroke="white" stroke-width="6"/>`});
+  }
+  function renderRings(){
+    const [a,b]=d.candidates;
+    panel.innerHTML=`<div class="rmx-rings"><div class="rmx-ring-input"><p>Ground panorama</p><div class="rmx-ground-images"><img class="rmx-erp" src="${esc(d.assets.pano)}" alt="Ground panorama"><div class="rmx-down-arrow" aria-hidden="true">↓</div><p class="rmx-ring-caption">Depth map</p><div class="rmx-depth"><img class="rmx-erp" src="${esc(d.assets.depth)}" alt="Full-panorama depth preview"><span class="rmx-depth-band"></span><span class="rmx-depth-scan"></span></div></div><div class="rmx-extraction-control"><button type="button" id="rmx-extract" aria-label="${state.extracting?'Stop ring extraction':'Show ring extraction'}"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="${state.extracting?'M3 3h10v10H3z':'M4 2v12l10-6z'}"/></svg>${state.extracting?'Stop':'Show extraction'}</button></div></div>${[a,b].map(candidate=>`<div class="rmx-ring-input" style="--branch:${color(candidate)}"><p>Candidate ${candidate.label}</p><div class="rmx-patch">${candidatePatch(candidate)}</div></div>`).join('')}<div class="rmx-ground-link" aria-hidden="true">↓</div><div class="rmx-predictor">Aerial-to-ring predictor</div><div class="rmx-ring-cell">${polarSVG('ground')}<p class="rmx-ring-caption">Ground ring</p></div>${[a,b].map(candidate=>`<div class="rmx-ring-cell">${polarSVG(candidate.label)}<p class="rmx-ring-caption">Aerial ring ${candidate.label}</p></div>`).join('')}<div class="rmx-direction-tools"><span>Point to a ring to compare the same direction. Click to hold.</span><button type="button" data-clear-angle ${state.angle===null?'hidden':''}>Clear direction</button></div></div>`;
+    updateDirection();announce('Ground and aerial rings are shown separately. Select a direction to compare their spatial profiles.');
+  }
+  function finalMap(){
+    const full={x:0,y:0,w:1};let overlay='';
+    d.candidates.forEach(candidate=>{
+      const [x,y]=relativePoint(candidate.p,full),winner=candidate.label===d.verification.selected,inspect=state.inspected===candidate.label,c=color(candidate);
+      const labelX=x>900?x-42:x+35,labelY=y<70?y+48:y-25;
+      overlay+=`<g data-inspect="${candidate.label}" role="button" tabindex="0" aria-label="Inspect candidate ${candidate.label}${winner?', selected by verifier':''}" aria-pressed="${inspect}" opacity="${winner||inspect?1:.55}"><circle class="rmx-hit" cx="${x}" cy="${y}" r="37" fill="transparent"/>${winner?`<circle cx="${x}" cy="${y}" r="31" fill="${c}28" stroke="${c}" stroke-width="5"/>`:''}${inspect?`<circle cx="${x}" cy="${y}" r="41" fill="none" stroke="white" stroke-width="7"/><circle cx="${x}" cy="${y}" r="41" fill="none" stroke="#38482e" stroke-width="3"/>`:''}<circle cx="${x}" cy="${y}" r="14" fill="${c}" stroke="white" stroke-width="5"/><text x="${labelX}" y="${labelY}" font-size="39" fill="${c}" stroke="white" stroke-width="7" paint-order="stroke" font-weight="600">${candidate.label}</text></g>`;
     });
-    all50.forEach(o=>connection(mapPoint(o.node.p,o.pb,searchView(o.parent)),{x:o.target.x,y:o.target.y+o.target.w/2},o.p,blend(family(o.node),'#cbd0c5',o.rejected),1.5,{alpha:o.alpha*(1-u(t,35.55,36)*(1-u(t,39.45,40.3)))}));
-    cropImage(rootNode.input,L.root,'#c2ceb5',1,.15);
-    samples(rootNode,L.root,2,6,t,{root:true});
-    spawn200.forEach(o=>cropGuide(rootNode,o.node,L.root,o.box,200,o.start,t));
-    spawn200.forEach(({node,p,box})=>{if(p<=0)return;card(node,box,200,p,p);if(p>.99)samples(node,box,14,17,t);});
-    out100.forEach(o=>cropGuide(o.parent,o.node,o.pb,o.box,100,o.start,t));
-    out100.forEach(o=>{
-      if(o.p<=0)return;const descendantsSurvive=d.levels[2].kept.some(id=>n(id).parent===o.node.id);
-      const historyDim=o.node.kept&&!descendantsSurvive?u(t,41,42.5)*.55:0;
-      card(o.node,o.box,100,o.alpha,o.p,.09,Math.max(o.rejected,historyDim));
-      if(o.node.kept){survivorOutline(o.box,o.node,u(t,25,26.5)*(1-u(t,30,31)));if(t>=30){const parentSurvives=d.levels[2].kept.some(id=>n(id).parent===o.node.id);withAlpha(1-u(t,41,42.5)*(parentSurvives?0:.70),()=>samples(o.node,o.box,30,33,t));}}
-    });
-    all50.forEach(o=>cropGuide(o.parent,o.node,o.pb,o.box,50,o.start,t));
-    all50.forEach(o=>{if(o.p<=0)return;const descendantsSurvive=d.candidates.some(candidate=>candidate.parent===o.node.id);
-      const historyDim=o.node.kept&&!descendantsSurvive?u(t,55,56.3)*.62:0;
-      card(o.node,o.box,50,o.alpha,o.p,.09,Math.max(o.rejected,historyDim));if(o.node.kept){survivorOutline(o.box,o.node,u(t,41,42.5)*(1-u(t,46,47)));if(t>=46)withAlpha(1-historyDim,()=>samples(o.node,o.box,46,49,t,{shortlist:true}));}});
-    // Draw after the image cards so each score line stays visible all the way to its centroid.
-    leafScores(t,L);
+    const [gx,gy]=relativePoint(d.groundTruth,full);let star='';for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,r=i%2?11:24;star+=(i?'L':'M')+(gx+Math.cos(a)*r)+','+(gy+Math.sin(a)*r);}overlay+=`<path d="${star}Z" fill="#4b6b32" stroke="white" stroke-width="5" pointer-events="none"><title>Ground truth</title></path>`;
+    return svgImage(full,{overlay,label:'Final location with ground truth and both candidates',map:true});
   }
-  const selection=t=>u(t,91,92.5);
-  function evidenceLayout(t,L){return {...L.verify,bundle:0,output:0};}
-  function pano(t,L){
-    const V=evidenceLayout(t,L),b=rect(L.pano,V.pano,u(t,64,66));
-    text('Ground panorama',b.x,b.y-12,state.mobile?15:12,'#738466');
-    c.save();rounded(b,4);c.clip();imageIn(images.pano,b,{cover:true});c.restore();
-    return b;
+  function cardHTML(candidate){
+    const p=d.verification.probabilities?.[candidate.label],winner=candidate.label===d.verification.selected;
+    return `<article class="rmx-candidate-card" style="--branch:${color(candidate)}" data-card="${candidate.label}" data-winner="${winner}" data-inspected="${state.inspected===candidate.label}"><div class="rmx-candidate-head"><button type="button" data-inspect="${candidate.label}" aria-pressed="${state.inspected===candidate.label}">Candidate ${candidate.label}</button>${winner?'<span class="rmx-winner-label">✓ Selected</span>':''}</div><button type="button" class="rmx-candidate-patch" data-inspect="${candidate.label}" aria-label="Inspect candidate ${candidate.label} aerial evidence">${candidatePatch(candidate)}</button>${polarSVG(candidate.label,{comparison:true})}<button type="button" class="rmx-probability" data-inspect="${candidate.label}" title="A/B-normalized output-token probability"><small>LVLM output</small><b>${Number.isFinite(p)?percentage(p):'Unavailable'}</b></button>${Number.isFinite(p)?`<div class="rmx-prob-bar" style="--probability:${p*100}%"><span></span></div>`:''}<button type="button" class="rmx-origin" data-origin="${candidate.label}">← Search origin · rank ${candidate.searchRank}</button></article>`;
   }
-  function patchImage(candidate,box,color=family(candidate),opacity=1,dim=0){
-    cropImage(candidate.crop,box,color,opacity,dim);
-    const point=mapPoint(candidate.p,box,candidate.crop);
-    withAlpha(opacity,()=>circle(point.x,point.y,box.w<60?1.8:2.8,color,'#fff',.9));
+  function actualInputsHTML(){
+    const images=[{src:d.assets.pano,name:'Ground panorama'},{src:d.assets.context,name:'Aerial context'},...d.candidates.map(c=>({src:d.assets['crop'+c.sourceLabel],name:'Candidate '+c.label})),...d.candidates.map(c=>({src:d.assets['polar'+c.sourceLabel],name:'Aligned rings · '+c.label}))];
+    // Images are remapped by physical candidate, not by the display letter alone.
+    return `<details class="rmx-actual-inputs"><summary>View LVLM inputs</summary><div class="rmx-input-grid">${images.map(image=>`<figure><img src="${esc(image.src)}" alt="${image.name}"><figcaption>${image.name}</figcaption></figure>`).join('')}</div><p>${d.candidates.map(c=>`Candidate ${c.label}: (${(c.p[0]*1000).toFixed(1)}, ${(c.p[1]*1000).toFixed(1)})`).join(' · ')}</p></details>`;
   }
-  function horizonY(img,box){
-    if(!img?.naturalWidth)return box.y+box.h/2;
-    const sourceHeight=Math.min(img.naturalHeight,img.naturalWidth/(box.w/box.h)),top=(img.naturalHeight-sourceHeight)*.43;
-    return box.y+(img.naturalHeight/2-top)/sourceHeight*box.h;
-  }
-  function groundDepth(V,opacity=1){
-    const box=V.depth;
-    withAlpha(opacity,()=>{
-      text('Depth map',box.x,box.y-12,state.mobile?15:12,'#738466');
-      c.save();rounded(box,4);c.clip();imageIn(images.depth,box,{cover:true});
-      withAlpha(u(state.time,68.8,70),()=>{
-        const height=state.mobile?7:5,y=horizonY(images.depth,box),top=y-height/2,bottom=y+height/2;
-        c.fillStyle='rgba(16,25,20,.62)';
-        c.fillRect(box.x,box.y,box.w,top-box.y);
-        c.fillRect(box.x,bottom,box.w,box.y+box.h-bottom);
-        c.fillStyle='rgba(224,255,151,.24)';c.fillRect(box.x,top,box.w,height);
-        c.strokeStyle='#ddf3ad';c.lineWidth=1.6;c.strokeRect(box.x,top,box.w,height);
-        const extraction=u(state.time,70.5,75);
-        if(extraction>0&&extraction<1){
-          const scanX=box.x+box.w*extraction;
-          c.fillStyle='rgba(239,255,198,.32)';c.fillRect(Math.max(box.x,scanX-5),top,Math.min(10,box.x+box.w-Math.max(box.x,scanX-5)),height);
-          c.strokeStyle='#f4ffd5';c.lineWidth=2.2;c.beginPath();c.moveTo(scanX,y-height*1.7);c.lineTo(scanX,y+height*1.7);c.stroke();
-        }
-      });
-      c.restore();
-    });
-  }
-  function plotAxes(center,alpha=1){withAlpha(alpha,()=>{[.25,.5,.75,1].forEach(k=>circle(center.x,center.y,center.r*k,null,'#e0e7da',.8));c.strokeStyle='#e3e9dd';c.lineWidth=.7;c.beginPath();c.moveTo(center.x-center.r,center.y);c.lineTo(center.x+center.r,center.y);c.moveTo(center.x,center.y-center.r);c.lineTo(center.x,center.y+center.r);c.stroke();});}
-  function ring(values,center,color,progress=1,width=2,alpha=1){if(progress<=0)return;withAlpha(alpha,()=>{c.beginPath();const count=Math.max(1,Math.floor(clamp(progress)*359));for(let i=0;i<=count;i++){const a=i*Math.PI/180,r=values[i]/80*center.r,x=center.x+Math.sin(a)*r,y=center.y-Math.cos(a)*r;if(i)c.lineTo(x,y);else c.moveTo(x,y);}if(progress>=.999)c.closePath();c.strokeStyle=color;c.lineWidth=width;c.lineCap='round';c.lineJoin='round';c.stroke();});}
-  function dotAtRing(values,center,phi,color){const a=phi*Math.PI/180,r=values[phi]/80*center.r;circle(center.x+Math.sin(a)*r,center.y-Math.cos(a)*r,3.1,color,'white',1);}
-  function patchBox(index,t,L){return rect(L.shortlist(index),evidenceLayout(t,L).patches[index],u(t,64,66));}
-  function candidates(t,L){
-    d.candidates.forEach((candidate,index)=>{
-      const appear=u(t,59.3+index*.15,61+index*.15);if(!appear)return;
-      const b=patchBox(index,t,L),low=candidate.label===d.verification.selected?0:selection(t),bundle=evidenceLayout(t,L).bundle;
-      const parentNode=n(candidate.parent),parentBox=L.col50(col50Order.indexOf(candidate.parent));
-      const point=mapPoint(candidate.p,parentBox,parentNode.input),flow=u(t,59.3+index*.15,60.6+index*.15);
-      const target=state.mobile?{x:b.x+b.w/2,y:b.y-8}:{x:b.x-8,y:b.y+b.w/2};
-      arrow(point,target,flow,family(candidate),1-u(t,63.3,64),state.mobile);
-      withAlpha(appear*(1-u(t,63.3,64)),()=>{
-        circle(point.x,point.y,8,null,family(candidate),2.2);
-        pill(candidate.label,parentBox.x+parentBox.w-12,parentBox.y+18,family(candidate),11);
-      });
-      patchImage(candidate,b,blend(family(candidate),'#aeb7a6',low),appear*(1-low*.55),.02+low*.30);
-      withAlpha(appear*(1-low*.72),()=>{
-        text(bundle>.6?'Candidate '+candidate.label:candidate.label,b.x+4,b.y-10,state.mobile?17:14,family(candidate),'left',600);
-        withAlpha(1-bundle,()=>text('S '+score(candidate.score),b.x+b.w,b.y-10,state.mobile?15:11,'#819174','right'));
-        withAlpha(1-u(t,64,66),()=>text('Search rank '+candidate.searchRank,b.x+b.w/2,b.y+b.w+18,state.mobile?13:10,'#859478','center'));
-        withAlpha(bundle,()=>text('['+candidate.p.map(v=>Math.round(v*1000)).join(', ')+']',b.x+b.w/2,b.y+b.w+22,state.mobile?14:12,'#7a886d','center'));
-      });
-      withAlpha(selection(t)*(candidate.label===d.verification.selected?1:0),()=>{rounded({x:b.x-4,y:b.y-4,w:b.w+8,h:b.w+8},7);c.strokeStyle='#6b9550';c.lineWidth=3;c.stroke();pill(candidate.label,b.x+b.w-1,b.y+b.w-2,'#628a47',13);});
-    });
-  }
-  function arrow(a,b,progress,color='#78935e',alpha=1,vertical=false){
-    if(progress<=0)return;
-    const point=vertical?(p=>{
-      const q=1-p,dy=b.y-a.y,p1={x:a.x,y:a.y+dy*.46},p2={x:b.x,y:b.y-dy*.46};
-      return {x:q*q*q*a.x+3*q*q*p*p1.x+3*q*p*p*p2.x+p*p*p*b.x,y:q*q*q*a.y+3*q*q*p*p1.y+3*q*p*p*p2.y+p*p*p*b.y};
-    }):(p=>cubic(a,b,p));
-    withAlpha(alpha,()=>{
-      c.beginPath();c.moveTo(a.x,a.y);for(let i=1;i<=34;i++){const p=point(progress*i/34);c.lineTo(p.x,p.y);}c.strokeStyle=color;c.lineWidth=1.8;c.stroke();
-      withAlpha(u(progress,.85,1),()=>{const tangent=point(.995),angle=Math.atan2(b.y-tangent.y,b.x-tangent.x);c.beginPath();c.moveTo(b.x-7*Math.cos(angle-.45),b.y-7*Math.sin(angle-.45));c.lineTo(b.x,b.y);c.lineTo(b.x-7*Math.cos(angle+.45),b.y-7*Math.sin(angle+.45));c.stroke();});
-    });
-  }
-  function verification(t,L){
-    const V=evidenceLayout(t,L),fade=u(t,64,66);if(!fade)return;
-    text('Depth-ring verification',24,27,15,'#3d5132','left',550);
-    depthFlow(t,V);groundDepth(V,u(t,67.25,68.5));
-    const extraction=u(t,70.5,75),groundAlpha=u(t,70.5,71.2);
-    withAlpha(groundAlpha,()=>{plotAxes(V.ring);ring(d.displayRings.ground,V.ring,'#343f2d',extraction,2.1);text('Ground ring',V.ring.x,V.ring.y+V.ring.r+27,state.mobile?15:12,'#596e48','center',500);});
-    if(extraction>0&&extraction<1){
-      const phi=Math.floor(extraction*359),angle=phi*Math.PI/180;
-      withAlpha(groundAlpha,()=>{
-        c.beginPath();c.moveTo(V.ring.x,V.ring.y);c.lineTo(V.ring.x+Math.sin(angle)*V.ring.r,V.ring.y-Math.cos(angle)*V.ring.r);c.strokeStyle='#93aa78';c.lineWidth=1;c.stroke();
-        dotAtRing(d.displayRings.ground,V.ring,phi,'#56763e');
-      });
-    }
-    aerialPredictor(t,V);
-    const ringStart=u(t,77.2,80.2);
-    V.plots.forEach((plot,index)=>{
-      const candidate=d.candidates[index],col=family(candidate),appear=u(t,77.1+index*.1,77.7+index*.1);
-      withAlpha(appear,()=>{plotAxes(plot);ring(d.displayRings[candidate.label],plot,col,ringStart,2.5);text('Aerial ring '+candidate.label,plot.x,plot.y+plot.r+27,state.mobile?15:12,'#596e48','center',500);});
-    });
-  }
-  function aerialPredictor(t,V){
-    const box=V.predictor,show=u(t,75.2,75.8);
-    V.patches.forEach((patch,index)=>{
-      const plot=V.plots[index],color=family(d.candidates[index]);
-      arrow({x:patch.x+patch.w/2,y:patch.y+patch.w+10},{x:plot.x,y:box.y-6},u(t,75.8,76.5),color,1,true);
-      arrow({x:plot.x,y:box.y+box.h+6},{x:plot.x,y:plot.y-plot.r-10},u(t,76.5,77.2),color,1,true);
-    });
-    withAlpha(show,()=>{
-      rounded(box,6);c.fillStyle='#f7faf3';c.fill();c.strokeStyle='#c4d2b8';c.lineWidth=1.2;c.stroke();
-      text('Aerial-to-ring predictor',box.x+box.w/2,box.y+box.h/2+5,state.mobile?15:14,'#536b41','center',550);
-    });
-  }
-  function depthFlow(t,V){
-    arrow({x:V.pano.x+V.pano.w/2,y:V.pano.y+V.pano.h+8},
-      {x:V.depth.x+V.depth.w/2,y:V.depth.y-8},u(t,66.2,67.25),'#91a47c',1,true);
-    const start={x:V.depth.x+V.depth.w/2,y:V.depth.y+V.depth.h+10};
-    const end={x:V.ring.x,y:V.ring.y-V.ring.r-10};
-    arrow(start,end,u(t,69.8,70.5),'#91a47c',1,true);
-  }
-  function decisionLayout(){
-    if(state.mobile)return {
-      board:{x:24,y:58,w:512,h:704},pano:{x:44,y:130,w:300,h:94},context:{x:384,y:120,w:132},
-      patches:[{x:62,y:295,w:180},{x:318,y:295,w:180}],plots:[{x:152,y:630,r:85},{x:408,y:630,r:85}],
-      model:{x:195,y:805,w:170,h:64},rows:[{x:44,y:946,w:218,h:70},{x:298,y:946,w:218,h:70}],
-      map:{x:128,y:1104,w:304},outputTitle:{x:44,y:921}
-    };
-    return {
-      board:{x:24,y:62,w:490,h:560},pano:{x:44,y:119,w:450,h:100},context:{x:50,y:327,w:140},
-      patches:[{x:212,y:289,w:120},{x:362,y:289,w:120}],plots:[{x:272,y:525,r:65},{x:422,y:525,r:65}],
-      model:{x:555,y:159,w:136,h:88},rows:[{x:750,y:141,w:328,h:54},{x:750,y:211,w:328,h:54}],
-      map:{x:770,y:322,w:288},outputTitle:{x:750,y:111}
-    };
-  }
-  function panoramaImage(box,opacity=1){
-    withAlpha(opacity,()=>{c.save();rounded(box,4);c.clip();imageIn(images.pano,box,{cover:true});c.restore();});
-  }
-  function candidateMarker(candidate,box,{opacity=1,selected=false,large=false}={}){
-    const point=mapPoint(candidate.p,box,{x:0,y:0,w:1}),color=family(candidate);
-    withAlpha(opacity,()=>{
-      if(selected&&large){circle(point.x,point.y,19,color+'24');circle(point.x,point.y,14,null,'#fff',5);}
-      circle(point.x,point.y,large?(selected?7:5):3.7,color,'#fff',large?2.3:1.2);
-      if(selected)circle(point.x,point.y,large?14:8,null,color,large?3:1.2);
-      if(large){
-        const offset=selected?21:9,left=point.x>box.x+box.w-(selected?45:28);
-        mapLabel(candidate.label,point.x+(left?-offset:offset),clamp(point.y+(selected?19:-7),box.y+15,box.y+box.w-4),color,left?'right':'left',selected?16:14);
-      }else text(candidate.label,point.x+8,point.y-6,10,color,'left',600);
-    });
-  }
-  function mapLabel(label,x,y,color,align='left',size=13){
-    c.font=`600 ${size}px Arial`;c.textAlign=align;c.textBaseline='alphabetic';c.strokeStyle='#fff';c.lineWidth=4;c.lineJoin='round';c.strokeText(label,x,y);text(label,x,y,size,color,align,600);
-  }
-  function star(x,y,r,fill='#293d22'){
-    c.beginPath();for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,rr=i%2?r*.43:r,px=x+Math.cos(a)*rr,py=y+Math.sin(a)*rr;if(i)c.lineTo(px,py);else c.moveTo(px,py);}c.closePath();c.strokeStyle='#fff';c.lineWidth=2;c.stroke();c.fillStyle=fill;c.fill();
-  }
-  function groundTruthMarker(box){
-    const point=mapPoint(d.groundTruth,box,{x:0,y:0,w:1});
-    const label={x:clamp(point.x-22,box.x+29,box.x+box.w-30),y:clamp(point.y-20,box.y+18,box.y+box.w-18)};
-    c.beginPath();c.moveTo(point.x-5,point.y-6);c.lineTo(label.x+4,label.y+3);c.strokeStyle='#fff';c.lineWidth=3;c.stroke();c.strokeStyle='#435439';c.lineWidth=1;c.stroke();
-    star(point.x,point.y,8);mapLabel('GT',label.x,label.y,'#293d22','right',13);
-  }
-  function routedArrow(points,progress,color){
-    if(progress<=0)return;
-    const lengths=points.slice(1).map((p,i)=>Math.hypot(p.x-points[i].x,p.y-points[i].y)),total=lengths.reduce((a,b)=>a+b,0);
-    let remaining=total*progress;c.beginPath();c.moveTo(points[0].x,points[0].y);
-    for(let i=0;i<lengths.length;i++){const portion=Math.min(1,remaining/lengths[i]);c.lineTo(mix(points[i].x,points[i+1].x,portion),mix(points[i].y,points[i+1].y,portion));remaining-=lengths[i];if(remaining<=0)break;}
-    c.strokeStyle=color;c.lineWidth=1.8;c.lineJoin='round';c.lineCap='round';c.stroke();
-    withAlpha(u(progress,.85,1),()=>{const b=points.at(-1),a=points.at(-2),angle=Math.atan2(b.y-a.y,b.x-a.x);c.beginPath();c.moveTo(b.x-7*Math.cos(angle-.45),b.y-7*Math.sin(angle-.45));c.lineTo(b.x,b.y);c.lineTo(b.x-7*Math.cos(angle+.45),b.y-7*Math.sin(angle+.45));c.stroke();});
-  }
-  function tickMark(x,y,color,progress){
-    withAlpha(progress,()=>{c.beginPath();c.moveTo(x-4,y);c.lineTo(x-1,y+3);c.lineTo(x+5,y-4);c.strokeStyle=color;c.lineWidth=1.8;c.lineCap='round';c.stroke();});
-  }
-  function decisionSequence(t,L){
-    const V=decisionLayout(),source=L.verify,assembly=u(t,80.5,83.5),feed=u(t,84.5,86);
-    const decision=u(t,88.5,89.5),probability=u(t,89,90.5),select=selection(t);
-    const winner=chosen(d.verification.selected);
-    text('Depth-ring verification',24,27,15,'#3d5132','left',550);
-    // Compact six-image evidence group. It stays in place as the decision and location are produced.
-    withAlpha(assembly,()=>{
-      rounded(V.board,7);c.fillStyle='#fafcf7';c.fill();c.strokeStyle='#d6dfce';c.lineWidth=1;c.stroke();
-      text('Verifier inputs',V.board.x+16,V.board.y+23,state.mobile?16:13,'#566c46','left',550);
-    });
-    // Fade only the construction intermediates; they are not verifier inputs.
-    withAlpha(1-u(t,80.5,82),()=>{
-      depthFlow(t,source);
-      aerialPredictor(t,source);
-      groundDepth(source);
-      plotAxes(source.ring);ring(d.displayRings.ground,source.ring,'#343f2d',1,2.1);text('Ground ring',source.ring.x,source.ring.y+source.ring.r+27,state.mobile?15:12,'#596e48','center',500);
-    });
-    const panoBox=rect(source.pano,V.pano,assembly),contextBox=V.context;
-    panoramaImage(panoBox);text('Ground panorama',panoBox.x,panoBox.y-12,state.mobile?14:12,'#738466');
-    withAlpha(u(t,81.2,82.5),()=>{
-      cropImage({x:0,y:0,w:1},contextBox,'#c6d0bc',1,.03);
-      text('Aerial context',contextBox.x,contextBox.y-12,state.mobile?13:11,'#738466');
-      d.candidates.forEach(candidate=>candidateMarker(candidate,contextBox,{opacity:candidate.label===winner.label?1:1-select*.55}));
-    });
-    d.candidates.forEach((candidate,index)=>{
-      const patch=rect(source.patches[index],V.patches[index],assembly),target=V.plots[index],original=source.plots[index];
-      const plot={x:mix(original.x,target.x,assembly),y:mix(original.y,target.y,assembly),r:mix(original.r,target.r,assembly)};
-      const low=candidate.label===winner.label?0:select,color=family(candidate),evidenceAlpha=1-low*.32;
-      patchImage(candidate,patch,blend(color,'#a4ad9b',low),evidenceAlpha,.02+low*.12);
-      withAlpha(evidenceAlpha,()=>{
-        text('Candidate '+candidate.label,patch.x+2,patch.y-12,state.mobile?15:13,color,'left',550);
-        withAlpha(assembly,()=>text('['+candidate.p.map(v=>Math.round(v*1000)).join(', ')+']',patch.x+patch.w/2,patch.y+patch.w+22,state.mobile?14:12,'#7c8871','center'));
-        const pairing=u(t,80.8,82.5);
-        plotAxes(plot);ring(d.displayRings.ground,plot,'#38432f',1,1.9,pairing);ring(d.displayRings[candidate.label],plot,color,1,2.3);
-        withAlpha(1-pairing,()=>text('Aerial ring '+candidate.label,plot.x,plot.y+plot.r+27,state.mobile?15:12,'#596e48','center',500));
-        withAlpha(pairing,()=>text('Ground + '+candidate.label,plot.x,plot.y+plot.r+21,state.mobile?14:11,'#718166','center'));
-      });
-    });
-    // The two flow directions use the same spatial grammar on desktop and phone.
-    const model=V.model,modelShow=u(t,83.8,84.5);
-    if(state.mobile)arrow({x:280,y:V.board.y+V.board.h+3},{x:280,y:model.y-6},feed,'#789260');
-    else arrow({x:V.board.x+V.board.w+3,y:model.y+model.h/2},{x:model.x-6,y:model.y+model.h/2},feed,'#789260');
-    withAlpha(modelShow,()=>{
-      rounded(model,7);c.fillStyle='#f0f5e9';c.fill();c.strokeStyle=blend('#c4d2b8','#829b69',feed);c.lineWidth=1.4;c.stroke();
-      const cx=model.x+model.w/2,cy=model.y+model.h/2;
-      text('LVLM',cx,cy-(state.mobile?1:7),state.mobile?20:20,'#4c6638','center',600);
-      text('verifier',cx,cy+(state.mobile?17:14),state.mobile?13:12,'#829071','center');
-
-    });
-    const outputFlow=u(t,87.5,88.5);
-    if(state.mobile){
-      arrow({x:280,y:model.y+model.h+3},{x:280,y:918},outputFlow,'#789260');
-    }else arrow({x:model.x+model.w+3,y:model.y+model.h/2},{x:V.rows[0].x-24,y:(V.rows[0].y+V.rows[1].y+V.rows[1].h)/2},outputFlow,'#789260');
-    withAlpha(decision,()=>{
-      c.beginPath();
-      if(state.mobile){c.moveTo(44,940);c.lineTo(44,935);c.lineTo(516,935);c.lineTo(516,940);}
-      else{c.moveTo(744,141);c.lineTo(738,141);c.lineTo(738,265);c.lineTo(744,265);}
-      c.strokeStyle='#c5d1ba';c.lineWidth=1;c.stroke();
-    });
-    withAlpha(decision,()=>text('LVLM output',V.outputTitle.x,V.outputTitle.y,state.mobile?16:13,'#566c46','left',550));
-    d.candidates.forEach((candidate,index)=>{
-      const row=V.rows[index],color=family(candidate),selected=candidate.label===winner.label,low=selected?0:select;
-      const thumb={x:row.x+8,y:row.y+(row.h-40)/2,w:40},left=thumb.x+thumb.w+12,right=row.x+row.w-12,barWidth=right-left;
-      withAlpha(decision*(1-low*.28),()=>{
-        rounded(row,6);c.fillStyle=selected?'#f8faf6':'#fcfcfa';c.fill();c.strokeStyle=blend('#e0e5da',selected?color:'#e0e5da',select);c.lineWidth=selected?mix(1,2,select):1;c.stroke();
-        patchImage(candidate,thumb,color,1,.03);
-        text(candidate.label,left,row.y+23,state.mobile?16:14,color,'left',600);
-        if(selected)tickMark(left+21,row.y+18,color,select);
-        withAlpha(probability,()=>{
-          const p=d.verification.probabilities?.[candidate.label];
-          if(Number.isFinite(p)){
-            text(probabilityText(p),right,row.y+23,state.mobile?16:15,color,'right',600);
-            rounded({x:left,y:row.y+row.h-19,w:barWidth,h:5},2.5);c.fillStyle='#e6ebdf';c.fill();
-            rounded({x:left,y:row.y+row.h-19,w:Math.max(.1,barWidth*p*probability),h:5},2.5);c.fillStyle=color;c.fill();
-          }else text(selected?'Selected':'Not selected',right,row.y+33,state.mobile?13:12,selected?color:'#939c8a','right',selected?550:400);
-        });
-      });
-    });
-    // Return the selected existing candidate on a separate fixed map, without displacing the evidence.
-    const map=V.map,selectedRow=V.rows[d.candidates.findIndex(candidate=>candidate.label===winner.label)];
-    const mapFlow=u(t,94.5,96),mapShow=u(t,95,96.5),pointShow=u(t,96.2,97.5);
-    if(state.mobile)arrow({x:selectedRow.x+selectedRow.w/2,y:selectedRow.y+selectedRow.h+5},{x:map.x+map.w/2,y:map.y-9},mapFlow,family(winner),1,true);
-    else routedArrow([{x:selectedRow.x+selectedRow.w+5,y:selectedRow.y+selectedRow.h/2},{x:1094,y:selectedRow.y+selectedRow.h/2},{x:1094,y:map.y+24},{x:map.x+map.w+7,y:map.y+24}],mapFlow,family(winner));
-    withAlpha(mapShow,()=>{
-      text('Final location',map.x,map.y-12,state.mobile?16:13,'#566c46','left',550);
-      cropImage({x:0,y:0,w:1},map,'#c3cfb7',1,.03);
-      d.candidates.forEach(candidate=>candidateMarker(candidate,map,{opacity:(candidate.label===winner.label?1:.62)*pointShow,selected:candidate.label===winner.label,large:true}));
-      withAlpha(pointShow,()=>{
-        groundTruthMarker(map);
-        const y=map.y+map.w+23;star(map.x+8,y-4,5);text('GT',map.x+19,y,11,'#44553b');
-        d.candidates.forEach((candidate,index)=>{const x=map.x+82+index*94,color=family(candidate);circle(x,y-4,4,color,'white',1);text(candidate.label+(candidate.label===winner.label?' selected':''),x+10,y,11,color,'left',candidate.label===winner.label?600:400);});
-      });
-    });
+  function renderVerification(){
+    panel.innerHTML=`<div class="rmx-verification"><div class="rmx-evidence"><div class="rmx-shared"><div><p>Ground panorama</p><img class="rmx-shared-pano" src="${esc(d.assets.pano)}" alt="Ground panorama"></div><div><p>Aerial context</p><img src="${esc(d.assets.context)}" alt="Shared aerial context"></div></div><div class="rmx-comparison">${d.candidates.map(cardHTML).join('')}</div><div class="rmx-contours" role="group" aria-label="Ring contours"><label><input type="checkbox" id="rmx-ground-contour" ${state.ground?'checked':''}>Ground ring</label><label><input type="checkbox" id="rmx-aerial-contour" ${state.aerial?'checked':''}>Aerial ring</label></div></div><aside class="rmx-result"><p class="rmx-panel-label">Final location <small>Candidate ${d.verification.selected} selected</small></p><div class="rmx-map-wrap" id="rmx-final-map">${finalMap()}</div><div class="rmx-map-legend"><span>★ GT</span>${d.candidates.map(c=>`<button type="button" style="--branch:${color(c)}" data-inspect="${c.label}" aria-pressed="${state.inspected===c.label}"><i class="rmx-dot"></i>${c.label}${c.label===d.verification.selected?' selected':''}</button>`).join('')}</div><span class="rmx-direction-readout" id="rmx-direction-readout"></span>${actualInputsHTML()}</aside></div>`;
+    updateDirection();announce('Select a candidate, probability, or map point to inspect the same recorded evidence.');
   }
   function render(){
-    if(!c)return;const L=layout(),t=state.time;
-    const open=u(t,7.8,9.5);
-    if(!state.mobile){L.root=rect({x:360,y:205,w:400},L.root,open);L.pano=rect({x:360,y:54,w:400,h:105},L.pano,open);}
-    else{L.root=rect({x:65,y:190,w:430},L.root,open);L.pano=rect({x:65,y:62,w:430,h:86},L.pano,open);}
-    c.setTransform(state.scale,0,0,state.scale,0,0);c.globalAlpha=1;c.fillStyle='#fff';c.fillRect(0,0,state.w,state.h);c.imageSmoothingEnabled=true;c.imageSmoothingQuality='high';
-    const searchFade=1-u(t,64,66);withAlpha(searchFade,()=>drawSearch(t,L));
-    if(t<80.5){
-      withAlpha(u(t,64,66),()=>verification(t,L));
-      pano(t,L);candidates(t,L);
-    }else decisionSequence(t,L);
-    const phase=t<10?'Coordinate sampling and clustering':t<20?`${kids('root').length} parallel search branches`:t<25?`Comparing ${column100Order.length} hypothesis scores`:t<28?`Darkening pruned hypotheses and retaining up to B = ${d.config.budget}`:t<36?`${kept100Order.length} retained hypotheses continue searching`:t<41?`Comparing ${pool50Order.length} hypothesis scores`:t<44?`Darkening pruned hypotheses and retaining up to B = ${d.config.budget}`:t<52?`${col50Order.length} parallel local searches`:t<59.3?'Ranking leaf hypotheses by recorded path scores':t<64?'Two candidates shortlisted for verification':t<75?'Ground depth estimation and horizon-band pooling':t<80.5?'Predicting candidate depth rings':t<85?'Grouping six images and candidate coordinates':t<89?'Providing the grouped inputs to the LVLM':t<91?'Reading the recorded LVLM decision':t<95?'Dimming the unselected candidate':'Final candidate location';
-    if(phase!==state.phase){state.phase=phase;$('#rm-motion-description').textContent=phase;canvas.setAttribute('aria-label',phase);}
-    const label=t<64?'Search':t<95?'Depth-ring verification':'Final localization';
-    canvas.dataset.phase=label;canvas.dataset.time=t.toFixed(3);canvas.dataset.parallelBranches=t<10?0:t<29.5?kids('root').length:t<44.5?kept100Order.length:t<59.3?col50Order.length:2;canvas.dataset.renderedFrames=String(++state.frameCount);
-    canvas.dataset.decision=t>=25&&t<28?'pruning-100':t>=41&&t<44?'pruning-50':t>=80.5&&t<85?'grouped-inputs':t>=85&&t<89?'feeding-lvlm':t>=91&&t<95?'candidate-selected':'none';
-
-  }
-  function resize(){
-    const width=root.clientWidth-2;state.mobile=width<650;state.w=state.mobile?560:1120;state.h=state.mobile?1450:650;const cssHeight=width*state.h/state.w;
-    const dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(width*dpr);canvas.height=Math.round(cssHeight*dpr);canvas.style.aspectRatio=state.w+'/'+state.h;state.scale=canvas.width/state.w;render();
-  }
-  function updateButton(){
-    const button=$('#rm-motion-run');
-    button.textContent=state.playing?'Replaying…':replayActive&&state.userPaused?'Resume':'Replay stage';
-    button.disabled=state.playing||!state.loaded;
-    $('#rm-motion-pause').disabled=!state.playing||!state.loaded;
-  }
-  function pause(manual=true){state.playing=false;if(manual){state.userPaused=true;state.playRequested=false;state.resumeOnEnter=false;}cancelAnimationFrame(state.raf);updateButton();}
-  function tick(timestamp){
-    if(!state.playing)return;const dt=state.last?Math.min((timestamp-state.last)/1000,.08):0;state.last=timestamp;
-    state.time=Math.min(playUntil,state.time+dt*baselineSpeed);render();
-    if(state.time>=playUntil){replayActive=false;pause(false);return;}
-    state.raf=requestAnimationFrame(tick);
-  }
-  function play(){
     if(!state.loaded)return;
-    cancelAnimationFrame(state.raf);state.playing=true;state.userPaused=false;state.last=0;updateButton();state.raf=requestAnimationFrame(tick);
+    root.dataset.caseId=d.id;root.dataset.view=state.view;
+    $$('.rmx-tabs [data-view]').forEach(button=>{const on=button.dataset.view===state.view;button.setAttribute('aria-selected',String(on));button.tabIndex=on?0:-1;});
+    panel.setAttribute('aria-labelledby','rmx-tab-'+state.view);
+    if(state.view==='search')renderSearch();else if(state.view==='rings')renderRings();else renderVerification();
   }
-  function replayStage(){
-    if(!state.loaded)return;notifyInteraction();
-    if(!(replayActive&&state.userPaused)){
-      state.time=currentRange().start;state.last=0;playUntil=currentRange().end;replayActive=true;render();
+  function $$(selector){return [...root.querySelectorAll(selector)];}
+  function stopExtraction(){cancelAnimationFrame(animation);animation=0;state.extracting=false;}
+  function changeView(view){if(!views.includes(view)||!state.loaded)return;interact();stopExtraction();state.view=view;state.angle=null;state.pinned=false;render();}
+  function candidateInspect(label){
+    if(label!==null&&!d.candidates.some(c=>c.label===label))return;
+    state.inspected=label;
+    $$('.rmx-candidate-card').forEach(card=>card.dataset.inspected=String(card.dataset.card===state.inspected));
+    $$('[data-inspect]').forEach(el=>el.setAttribute('aria-pressed',String(el.dataset.inspect===state.inspected)));
+    $('#rmx-final-map').innerHTML=finalMap();
+    announce(state.inspected?`Inspecting candidate ${label}. The recorded verifier selected ${d.verification.selected}.`:'Both candidate locations and the recorded verifier decision are shown.');
+  }
+  function updateDirection(){
+    const angle=state.angle,phi=angle===null?0:angle,a=phi*Math.PI/180;
+    $$('.rmx-polar').forEach(svg=>{
+      const marker=svg.querySelector('[data-direction-marker]');if(!marker)return;
+      marker.setAttribute('visibility',angle===null?'hidden':'visible');
+      svg.setAttribute('aria-valuenow',String(phi));svg.setAttribute('aria-valuetext',angle===null?'No direction selected':phi+' degrees'+(state.pinned?', held':''));
+      svg.querySelector('[data-direction-line]').setAttribute('d',`M110 110L${110+Math.sin(a)*86} ${110-Math.cos(a)*86}`);
+      const key=svg.dataset.ring,values=d.displayRings[key],r=values[phi]/80*86,dot=svg.querySelector('[data-direction-dot]');
+      dot.setAttribute('cx',110+Math.sin(a)*r);dot.setAttribute('cy',110-Math.cos(a)*r);dot.setAttribute('visibility',state.view==='verification'&&!state.aerial?'hidden':'visible');
+      const ground=svg.querySelector('[data-ground-dot]');if(ground){const gr=d.displayRings.ground[phi]/80*86;ground.setAttribute('cx',110+Math.sin(a)*gr);ground.setAttribute('cy',110-Math.cos(a)*gr);ground.setAttribute('visibility',state.ground?'visible':'hidden');}
+    });
+    const clear=$('[data-clear-angle]');if(clear)clear.hidden=angle===null;
+    const readout=$('#rmx-direction-readout');if(readout)readout.textContent=angle===null?'':`${phi}° · Ground ${d.displayRings.ground[phi].toFixed(1)} m · A ${d.displayRings.A[phi].toFixed(1)} m · B ${d.displayRings.B[phi].toFixed(1)} m`;
+  }
+  function pointerAngle(event,svg){const b=svg.getBoundingClientRect();return (Math.round(Math.atan2(event.clientX-b.left-b.width/2,-(event.clientY-b.top-b.height/2))*180/Math.PI)+360)%360;}
+  function extractionFrame(timestamp){
+    if(!state.extracting||state.view!=='rings'||!state.loaded)return;
+    if(!extractionStart)extractionStart=timestamp;
+    const elapsed=timestamp-extractionStart,groundProgress=clamp(elapsed/3200),aerialProgress=clamp((elapsed-3600)/1100);
+    const scan=$('.rmx-depth-scan');if(scan){scan.style.opacity=groundProgress<1?'1':'0';scan.style.left=groundProgress*100+'%';}
+    const gp=$('[data-ring-path="ground"]');if(gp)gp.setAttribute('d',polarPath(d.displayRings.ground,groundProgress));
+    $$('[data-ring-path="A"],[data-ring-path="B"]').forEach(path=>path.setAttribute('d',aerialProgress>0?polarPath(d.displayRings[path.dataset.ringPath],aerialProgress):''));
+    const predictor=$('.rmx-predictor');if(predictor)predictor.style.opacity=elapsed<3200?'.3':'1';
+    if(elapsed>=4700){state.extracting=false;animation=0;const button=$('#rmx-extract');button.innerHTML='<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2v12l10-6z"/></svg>Show extraction';button.setAttribute('aria-label','Show ring extraction');announce('Ground ring extraction is complete; the aerial rings are predicted from candidate patches.');return;}
+    animation=requestAnimationFrame(extractionFrame);
+  }
+  function toggleExtraction(){
+    if(state.extracting){stopExtraction();renderRings();return;}
+    if(matchMedia('(prefers-reduced-motion: reduce)').matches){announce('The highlighted depth band defines the directional ground-ring representation.');return;}
+    state.extracting=true;state.angle=null;state.pinned=false;extractionStart=0;renderRings();
+    $$('[data-ring-path]').forEach(path=>path.setAttribute('d',''));animation=requestAnimationFrame(extractionFrame);
+    announce('Scanning the depth band to illustrate ground-ring extraction. Aerial prediction follows.');
+  }
+  function restoreFocus(target){
+    if(!target)return;
+    const attrs=['data-node','data-group','data-points','data-inspect','data-open','data-clear-group'];
+    for(const attr of attrs)if(target.hasAttribute(attr)){const value=target.getAttribute(attr);const next=$(`[${attr}="${CSS.escape(value)}"]`);next?.focus({preventScroll:true});return;}
+    if(target.id)$('#'+CSS.escape(target.id))?.focus({preventScroll:true});
+  }
+  root.addEventListener('click',event=>{
+    const target=event.target.closest('button,[role="button"],[role="slider"]');if(!target||!state.loaded)return;
+    const svg=target.closest('.rmx-polar');
+    if(svg){interact();if(state.pinned){state.pinned=false;state.angle=null;}else{state.angle=pointerAngle(event,svg);state.pinned=true;}updateDirection();return;}
+    if(target.hasAttribute('data-view'))changeView(target.dataset.view);
+    else if(target.hasAttribute('data-node')){interact();const candidate=candidateFor(target.dataset.node);if(candidate&&target.classList.contains('rmx-node')){state.inspected=candidate.label;changeView('verification');}else{inspectNode(target.dataset.node);restoreFocus(target);}}
+    else if(target.hasAttribute('data-group')){interact();chooseGroup(Number(target.dataset.group));restoreFocus(target);}
+    else if(target.hasAttribute('data-points')){interact();state.points=target.dataset.points;state.group=null;renderSearch();restoreFocus(target);}
+    else if(target.hasAttribute('data-open')){interact();inspectNode(target.dataset.open);}
+    else if(target.hasAttribute('data-clear-group')){interact();state.group=null;renderSearch();}
+    else if(target.hasAttribute('data-verify')){interact();state.inspected=target.dataset.verify;changeView('verification');}
+    else if(target.hasAttribute('data-inspect')){interact();candidateInspect(target.dataset.inspect);}
+    else if(target.hasAttribute('data-origin')){interact();const c=d.candidates.find(c=>c.label===target.dataset.origin);inspectNode(c.id);}
+    else if(target.hasAttribute('data-clear-angle')){state.angle=null;state.pinned=false;updateDirection();}
+    else if(target.id==='rmx-extract'){interact();toggleExtraction();}
+  });
+  root.addEventListener('change',event=>{
+    const t=event.target;
+    if(t.id==='rmx-show-pruned'){interact();state.showPruned=t.checked;if(!t.checked&&!selectedNode().kept){state.input='root';state.group=null;}renderSearch();$('#rmx-show-pruned').focus({preventScroll:true});}
+    else if(t.id==='rmx-node-select'){interact();inspectNode(t.value);$('#rmx-node-select').focus({preventScroll:true});}
+    else if(t.id==='rmx-ground-contour'||t.id==='rmx-aerial-contour'){
+      interact();state[t.id==='rmx-ground-contour'?'ground':'aerial']=t.checked;
+      $$('[data-contour="'+(t.id==='rmx-ground-contour'?'ground':'aerial')+'"]').forEach(path=>path.style.opacity=t.checked?'1':'0');updateDirection();
     }
-    play();
-  }
-  $('#rm-motion-run').addEventListener('click',replayStage);
-  $('#rm-motion-pause').addEventListener('click',()=>pause());
-
-  new ResizeObserver(resize).observe(root);
-  const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if('IntersectionObserver' in window)new IntersectionObserver(entries=>{if(!entries[0].isIntersecting&&state.playing){state.resumeOnEnter=true;pause(false);}else if(entries[0].isIntersecting&&state.resumeOnEnter&&!state.userPaused){state.resumeOnEnter=false;play();}},{threshold:.12}).observe(canvas);
-  document.addEventListener('visibilitychange',()=>{if(document.hidden)pause(false);});
-  let loadVersion=0;
-  const entries=window.RINGMATCH_CASES||[];
-  const selector=$('#rm-case-select'),status=$('.rm-motion-source');
+  });
+  root.addEventListener('pointermove',event=>{const svg=event.target.closest('.rmx-polar');if(svg&&!state.pinned&&!state.extracting&&event.pointerType!=='touch'){state.angle=pointerAngle(event,svg);updateDirection();}});
+  root.addEventListener('pointerout',event=>{const svg=event.target.closest('.rmx-polar');if(svg&&!svg.contains(event.relatedTarget)&&!state.pinned){state.angle=null;updateDirection();}});
+  root.addEventListener('keydown',event=>{
+    const target=event.target,svg=target.closest('.rmx-polar');
+    if(event.key==='Escape'){interact();state.angle=null;state.pinned=false;if(state.view==='search'){state.group=null;renderSearch();$('#rmx-active-map')?.querySelector('[role="button"]')?.focus({preventScroll:true});}else if(state.view==='verification'){state.inspected=null;renderVerification();}updateDirection();event.preventDefault();}
+    else if(target.matches('[role="tab"]')&&['ArrowLeft','ArrowRight','Home','End'].includes(event.key)){event.preventDefault();const i=views.indexOf(state.view),next=event.key==='Home'?0:event.key==='End'?2:(i+(event.key==='ArrowRight'?1:2))%3;changeView(views[next]);$('#rmx-tab-'+views[next]).focus();}
+    else if(svg&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Home','End','Enter',' '].includes(event.key)){
+      event.preventDefault();interact();if(event.key==='Enter'||event.key===' '){state.pinned=!state.pinned;state.angle??=0;}else{state.angle=event.key==='Home'?0:event.key==='End'?359:((state.angle??0)+(['ArrowRight','ArrowUp'].includes(event.key)?1:359))%360;state.pinned=true;}updateDirection();
+    }else if(target.matches('[role="button"]')&&['Enter',' '].includes(event.key)){event.preventDefault();target.dispatchEvent(new MouseEvent('click',{bubbles:true}));}
+  });
+  root.addEventListener('focusout',event=>{if(event.target.matches('.rmx-polar')&&!state.pinned){state.angle=null;updateDirection();}});
+  panel.addEventListener('click',event=>{if(event.target.closest('button,[role="button"],[role="slider"],input,select,summary'))return;if(state.view==='search'&&state.group!==null){state.group=null;renderSearch();}else if(state.view==='verification'&&state.inspected){candidateInspect(null);}});
+  document.addEventListener('visibilitychange',()=>{if(document.hidden&&state.extracting){stopExtraction();renderRings();}});
+  const selector=$('#rm-case-select'),entries=window.RINGMATCH_CASES||[];
   entries.forEach(entry=>{const option=document.createElement('option');option.value=entry.id;option.textContent=entry.label;selector.append(option);});
-  selector.value=root.dataset.defaultCase||d.id;
-  function controlsLoading(loading){
-    root.setAttribute('aria-busy',String(loading));
-    stageButtons.concat(scaleButtons).forEach(button=>button.disabled=loading);
-    $('#rm-case-loading').hidden=!loading;
-    $('.rm-motion-stage').setAttribute('aria-busy',String(loading));
-    if(loading)['#rm-motion-run','#rm-motion-pause'].forEach(id=>$(id).disabled=true);
-    else updateButton();
-    status.textContent='';
-  }
-  async function activateCase(trace,version){
-    const nextImages={};
-    const loadImage=(key,priority)=>new Promise(resolve=>{const img=new Image();nextImages[key]=img;img.decoding='async';img.fetchPriority=priority;img.onload=()=>resolve(true);img.onerror=()=>resolve(false);img.src=trace.assets[key];});
-    const ready=await Promise.all([loadImage('aerial','auto'),loadImage('pano','auto'),loadImage('depth','auto')]);
-    if(version!==loadVersion)return;
-    if(!ready.every(Boolean))throw new Error('Input image download failed');
-    d=trace;images=nextImages;updateOrders();state.loaded=true;state.time=currentRange().still;state.last=0;state.phase='';state.userPaused=false;state.resumeOnEnter=false;replayActive=false;selector.value=trace.id;controlsLoading(false);syncStageControls();updateButton();resize();
-    canvas.dataset.caseId=trace.id;
-
-  }
+  selector.value=root.dataset.defaultCase||'case-02';
+  function loading(on){root.setAttribute('aria-busy',String(on));$('.rmx-workspace').setAttribute('aria-busy',String(on));panel.inert=on;$('#rm-case-loading').hidden=!on;$$('[data-view]').forEach(button=>button.disabled=on);}
+  function imageReady(url){return new Promise((resolve,reject)=>{const image=new Image();image.decoding='async';image.onload=()=>{if(image.decode)image.decode().then(resolve,reject);else resolve();};image.onerror=()=>reject(new Error('Image unavailable'));image.src=url;});}
   async function switchCase(id){
-    const version=++loadVersion;pause(false);replayActive=false;state.resumeOnEnter=false;state.playRequested=false;state.loaded=false;controlsLoading(true);
-    try{const trace=await window.loadRingMatchCase(id);if(version!==loadVersion)return;await activateCase(trace,version);}
-    catch(error){if(version!==loadVersion)return;controlsLoading(false);status.textContent='Unable to load case';selector.value=d.id;state.loaded=!!images.aerial?.naturalWidth;updateButton();}
+    if(!entries.some(entry=>entry.id===id))return;
+    const version=++loadVersion;lastRequested=id;stopExtraction();loading(true);$('#rmx-status').textContent='';$('#rmx-retry').hidden=true;
+    try{
+      const trace=await window.loadRingMatchCase(id);
+      await Promise.all([...new Set(['aerial','pano','depth','context','cropA','cropB','polarA','polarB'].map(key=>trace.assets[key]))].map(imageReady));
+      if(version!==loadVersion)return;
+      d=trace;state.loaded=true;state.input='root';state.group=null;state.inspected=null;state.angle=null;state.pinned=false;state.ground=true;state.aerial=true;state.points='clusters';
+      selector.value=d.id;render();loading(false);
+    }catch(error){
+      if(version!==loadVersion)return;
+      loading(false);state.loaded=!!panel.children.length;
+      if(state.loaded)selector.value=d.id;
+      $('#rmx-status').textContent='Unable to load case.';$('#rmx-retry').hidden=false;
+    }
   }
-  selector.addEventListener('change',event=>{notifyInteraction();return switchCase(event.target.value);});
-  function stepCase(delta){notifyInteraction();const index=entries.findIndex(entry=>entry.id===selector.value),next=entries[(index+delta+entries.length)%entries.length];selector.value=next.id;switchCase(next.id);}
+  selector.addEventListener('change',()=>{interact();switchCase(selector.value);});
+  function stepCase(delta){interact();const i=entries.findIndex(entry=>entry.id===selector.value),next=entries[(i+delta+entries.length)%entries.length];selector.value=next.id;switchCase(next.id);}
   $('#rm-case-prev').addEventListener('click',()=>stepCase(-1));$('#rm-case-next').addEventListener('click',()=>stepCase(1));
-  controlsLoading(true);syncStageControls();
-  let initialized=false;
-  function initialize(){if(initialized)return;initialized=true;switchCase(root.dataset.defaultCase||'case-03');}
-  if('IntersectionObserver' in window){
-    const loader=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){loader.disconnect();initialize();}},{rootMargin:'300px'});
-    loader.observe(root);
-  }else initialize();
-  window.RingMatchDemo={selectStage,replayStage,pause,getState:()=>({caseId:d.id,stage:activeStage,scale:activeScale,time:state.time,playing:state.playing,loaded:state.loaded,stopAt:playUntil})};
-  resize();
+  $('#rmx-retry').addEventListener('click',()=>switchCase(lastRequested));
+  function initialize(){if(initialized)return;initialized=true;switchCase(selector.value);}
+  loading(true);
+  if('IntersectionObserver' in window){const observer=new IntersectionObserver(entries=>{if(entries.some(entry=>entry.isIntersecting)){observer.disconnect();initialize();}},{rootMargin:'300px'});observer.observe(root);}else initialize();
 })();

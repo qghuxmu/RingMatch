@@ -6,6 +6,7 @@
 <meta name="description" content="RingMatch: a search-and-verification framework for wide-area precise cross-view localization.">
 <link rel="stylesheet" href="style.css?v=author-links-20261030"><link rel="stylesheet" href="overview.css?v=video-explorer-20261030">
 <link rel="stylesheet" href="enhancements.css?v=case-loading-20261029">
+<link rel="stylesheet" href="explorer.css?v=inspect-20261030">
 <link rel="icon" href="data:,">
 <link rel="preload" as="image" href="assets/video/overview-case01-poster.webp" fetchpriority="high">
 </head>
@@ -51,20 +52,18 @@
   </div>
 
   <h3 class="rm-interactive-heading" id="interactive-title">Interactive Demo</h3>
-  <div class="rm-motion" id="rm-motion" data-default-case="case-03" role="region" aria-labelledby="interactive-title" tabindex="-1">
+  <div class="rm-motion" id="rm-motion" data-default-case="case-02" role="region" aria-labelledby="interactive-title" tabindex="-1">
     <div class="rm-case-bar"><div class="rm-case-picker"><button type="button" id="rm-case-prev" aria-label="Previous case">‹</button><select id="rm-case-select" aria-label="Recorded inference case"></select><button type="button" id="rm-case-next" aria-label="Next case">›</button></div></div>
-    <div class="rm-stage-tabs" role="group" aria-label="Inference stage">
-      <button type="button" data-stage="sampling" aria-pressed="true" aria-controls="rm-motion-canvas">Sampling</button>
-      <button type="button" data-stage="search" aria-pressed="false" aria-controls="rm-motion-canvas">Branch &amp; zoom</button>
-      <button type="button" data-stage="candidates" aria-pressed="false" aria-controls="rm-motion-canvas">Top 2</button>
-      <button type="button" data-stage="rings" aria-pressed="false" aria-controls="rm-motion-canvas">Depth rings</button>
-      <button type="button" data-stage="verification" aria-pressed="false" aria-controls="rm-motion-canvas">Verification</button>
+    <div class="rmx-tabs" role="tablist" aria-label="Explore inference">
+      <button type="button" id="rmx-tab-search" role="tab" data-view="search" aria-selected="true" aria-controls="rmx-panel">Search</button>
+      <button type="button" id="rmx-tab-rings" role="tab" data-view="rings" aria-selected="false" aria-controls="rmx-panel" tabindex="-1">Depth Rings</button>
+      <button type="button" id="rmx-tab-verification" role="tab" data-view="verification" aria-selected="false" aria-controls="rmx-panel" tabindex="-1">Verification</button>
     </div>
-    <div class="rm-search-levels" id="rm-search-levels" role="group" aria-label="Search scale" hidden>
-      <button type="button" data-search-scale="200" aria-pressed="false">200 m</button><button type="button" data-search-scale="100" aria-pressed="false">100 m</button><button type="button" data-search-scale="50" aria-pressed="false">50 m</button>
+    <div class="rmx-workspace" aria-busy="true">
+      <div id="rmx-panel" role="tabpanel" aria-labelledby="rmx-tab-search"></div>
+      <div class="rm-case-loading" id="rm-case-loading" role="status">Loading...</div>
     </div>
-    <div class="rm-motion-stage" aria-busy="true"><canvas id="rm-motion-canvas" aria-label="RingMatch inference stage" role="img"></canvas><p class="rm-motion-sr" id="rm-motion-description" aria-live="polite"></p><div class="rm-case-loading" id="rm-case-loading" role="status">Loading...</div></div>
-    <div class="rm-stage-footer"><p id="rm-stage-explanation" aria-live="polite">Repeated coordinate predictions form several spatial hypotheses.</p><div class="rm-run-controls"><span class="rm-motion-source" role="status" aria-live="polite"></span><button type="button" id="rm-motion-run">Replay stage</button><button type="button" id="rm-motion-pause" disabled>Pause</button></div></div>
+    <div class="rmx-footer"><p id="rmx-explanation" aria-live="polite">Select a branch or a cluster to inspect the search.</p><span id="rmx-status" role="status"></span><button type="button" id="rmx-retry" hidden>Retry</button></div>
   </div>
 </section>
 
@@ -182,5 +181,5 @@
 </main>
 <footer><p>RingMatch · Wide-area cross-view localization</p><a href="#">Back to top</a></footer>
 <dialog id="image-dialog"><button type="button" class="dialog-close" aria-label="Close figure">×</button><img alt="Enlarged paper figure"></dialog>
-<script src="results-data.js"></script><script src="overview-trace.js?v=ordered-branches-20261027"></script><script src="overview.js?v=stage-explorer-20261030"></script><script src="app.js?v=simple-loading-20261029"></script><script src="video.js?v=overview-20261030"></script>
+<script src="results-data.js"></script><script src="overview-trace.js?v=ordered-branches-20261027"></script><script src="overview.js?v=inspect-20261030"></script><script src="app.js?v=simple-loading-20261029"></script><script src="video.js?v=overview-20261030"></script>
 </body></html>
