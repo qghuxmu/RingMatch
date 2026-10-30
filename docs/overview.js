@@ -77,7 +77,7 @@
         c.setLineDash([3,3]);c.strokeStyle='#fff';c.lineWidth=2.7;c.strokeRect(query.x,query.y,query.w,query.w);c.strokeStyle='#526647';c.lineWidth=.9;c.strokeRect(query.x,query.y,query.w,query.w);c.setLineDash([]);
         c.fillStyle='#4e6248dd';c.fillRect(query.x+2,query.y+2,25,12);text('Input',query.x+5,query.y+11,8,'#fff');c.restore();});
     }
-    const supportGap=node.depth>=2?(state.mobile?14:11):17;
+    const supportGap=node.depth>=2?14:17;
     withAlpha(opacity,()=>{text('S '+score(node.score),box.x+box.w/2,box.y+box.w+supportGap,state.mobile?13:10.5,blend('#6b7c5d','#a0a99a',rejected),'center',500);});
   }
   function samples(node,box,start,clusterAt,t,{root=false,shortlist=false}={}){
