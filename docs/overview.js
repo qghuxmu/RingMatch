@@ -49,7 +49,7 @@
   function mobileRow(index,count,y,maxSize=110){const pitch=520/Math.max(1,count),w=Math.min(maxSize,pitch-15);return {x:20+index*pitch+(pitch-w)/2,y,w};}
   function mobilePool(index,count,y){const cols=Math.min(4,count),rows=Math.ceil(count/cols),w=Math.min(105,520/cols-20);return {x:20+(index%cols)*520/cols+(520/cols-w)/2,y:y+Math.floor(index/cols)*140,w};}
   function layout(){
-    if(!state.mobile)return {root:{x:24,y:223,w:268},pano:{x:24,y:72,w:268,h:105},col200:kids('root').map((node,i)=>vertical(i,kids('root').length,365,156)),all100:i=>vertical(i,column100Order.length,625,76),kept100:i=>vertical(i,kept100Order.length,625,100),all50:i=>vertical(i,pool50Order.length,835,76),col50:i=>vertical(i,col50Order.length,825,96),shortlist:i=>({x:975,y:192+i*210,w:120}),verify:{pano:{x:35,y:76,w:400,h:125},depth:{x:35,y:270,w:400,h:125},ring:{x:235,y:520,r:80},patches:[{x:580,y:76,w:190},{x:870,y:76,w:190}],predictor:{x:580,y:328,w:480,h:46},plots:[{x:675,y:520,r:80},{x:965,y:520,r:80}],model:{x:783,y:570,w:207,h:43},output:{x:35,y:229,w:380}}};
+    if(!state.mobile)return {root:{x:24,y:223,w:268},pano:{x:24,y:72,w:268,h:105},col200:kids('root').map((node,i)=>vertical(i,kids('root').length,365,156)),all100:i=>vertical(i,column100Order.length,625,76),kept100:i=>vertical(i,kept100Order.length,625,100),all50:i=>vertical(i,pool50Order.length,835,76),col50:i=>vertical(i,col50Order.length,825,96),shortlist:i=>({x:975,y:168+i*210,w:120}),verify:{pano:{x:35,y:76,w:400,h:125},depth:{x:35,y:270,w:400,h:125},ring:{x:235,y:520,r:80},patches:[{x:580,y:76,w:190},{x:870,y:76,w:190}],predictor:{x:580,y:328,w:480,h:46},plots:[{x:675,y:520,r:80},{x:965,y:520,r:80}],model:{x:783,y:570,w:207,h:43},output:{x:35,y:229,w:380}}};
     return {root:{x:155,y:186,w:250},pano:{x:155,y:62,w:250,h:86},col200:kids('root').map((node,i)=>mobileRow(i,kids('root').length,500,145)),all100:i=>mobilePool(i,column100Order.length,760),kept100:i=>mobileRow(i,kept100Order.length,820),all50:i=>mobilePool(i,pool50Order.length,1000),col50:i=>mobileRow(i,col50Order.length,1040),shortlist:i=>({x:118+i*215,y:1230,w:130}),verify:{pano:{x:65,y:82,w:430,h:130},depth:{x:65,y:326,w:430,h:130},ring:{x:280,y:629,r:80},patches:[{x:60,y:795,w:180},{x:320,y:795,w:180}],predictor:{x:60,y:1015,w:440,h:46},plots:[{x:150,y:1210,r:80},{x:410,y:1210,r:80}],model:{x:170,y:1332,w:220,h:48},output:{x:65,y:282,w:430}}};
   }
   let column100Order,kept100Order,col50Order,pool50Order;
@@ -77,7 +77,8 @@
         c.setLineDash([3,3]);c.strokeStyle='#fff';c.lineWidth=2.7;c.strokeRect(query.x,query.y,query.w,query.w);c.strokeStyle='#526647';c.lineWidth=.9;c.strokeRect(query.x,query.y,query.w,query.w);c.setLineDash([]);
         c.fillStyle='#4e6248dd';c.fillRect(query.x+2,query.y+2,25,12);text('Input',query.x+5,query.y+11,8,'#fff');c.restore();});
     }
-    withAlpha(opacity,()=>{text('S '+score(node.score),box.x+box.w/2,box.y+box.w+17,state.mobile?13:10.5,blend('#6b7c5d','#a0a99a',rejected),'center',500);});
+    const supportGap=node.depth>=2?(state.mobile?14:11):17;
+    withAlpha(opacity,()=>{text('S '+score(node.score),box.x+box.w/2,box.y+box.w+supportGap,state.mobile?13:10.5,blend('#6b7c5d','#a0a99a',rejected),'center',500);});
   }
   function samples(node,box,start,clusterAt,t,{root=false,shortlist=false}={}){
     if(!node.points||t<start)return;
