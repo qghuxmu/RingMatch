@@ -4,11 +4,9 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>RingMatch | Beyond Local Refinement</title>
 <meta name="description" content="RingMatch: a search-and-verification framework for wide-area precise cross-view localization.">
-<link rel="stylesheet" href="style.css?v=author-hover-20261103"><link rel="stylesheet" href="overview.css?v=video-explorer-20261030">
+<link rel="stylesheet" href="style.css?v=author-hover-20261103"><link rel="stylesheet" href="overview.css?v=canvas-restored-20261104">
 <link rel="stylesheet" href="enhancements.css?v=case-loading-20261029">
-<link rel="stylesheet" href="explorer.css?v=inspect-20261030">
 <link rel="icon" href="data:,">
-<link rel="preload" as="image" href="assets/video/overview-case01-poster.webp" fetchpriority="high">
 </head>
 <body>
 <a class="skip" href="#main">Skip to content</a>
@@ -25,45 +23,18 @@
   <p class="paper-affiliations" aria-label="Affiliations"><span><sup>1</sup>Xiamen University</span><span><sup>2</sup>Tsinghua University</span><span><sup>3</sup>University of Macau</span></p>
   <p class="paper-author-note">* Corresponding authors.</p>
   <div class="paper-actions" aria-label="Paper and demo">
-    <a class="paper-action paper-action-primary" id="read-paper" href="" aria-disabled="true" tabindex="-1"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h4M9 12h6M9 16h6"/></svg><span>Read the paper</span></a>
-    <a class="paper-action paper-action-secondary" id="watch-demo" href="#demo-video"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 10 7-10 7z"/></svg><span>Watch the demo</span></a>
+    <a class="paper-action paper-action-primary" id="read-paper" href="https://arxiv.org/abs/2611.04759" target="_blank" rel="noopener noreferrer"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v5h4M9 12h6M9 16h6"/></svg><span>Read the paper</span></a>
+    <a class="paper-action paper-action-secondary" id="watch-demo" href="#rm-motion"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 5 10 7-10 7z"/></svg><span>Watch the demo</span></a>
   </div>
   <div class="paper-links" aria-label="Paper resources"><a href="https://github.com/qghuxmu/RingMatch" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#24292F" d="M12 .8a11.2 11.2 0 0 0-3.54 21.83c.56.1.77-.24.77-.54v-2.11c-3.13.68-3.79-1.33-3.79-1.33-.51-1.3-1.24-1.64-1.24-1.64-1.02-.7.08-.69.08-.69 1.13.08 1.72 1.16 1.72 1.16 1 1.71 2.62 1.22 3.26.93.1-.72.39-1.22.71-1.5-2.5-.29-5.13-1.26-5.13-5.58 0-1.23.44-2.24 1.16-3.02-.12-.29-.5-1.43.11-2.97 0 0 .95-.3 3.08 1.15a10.68 10.68 0 0 1 5.6 0c2.14-1.45 3.08-1.15 3.08-1.15.61 1.54.23 2.68.11 2.97.72.78 1.16 1.79 1.16 3.02 0 4.33-2.63 5.29-5.14 5.57.4.35.76 1.03.76 2.08v3.11c0 .3.2.65.77.54A11.2 11.2 0 0 0 12 .8Z"/></svg><span>Code</span><span class="resource-status">Coming soon</span></a><button type="button" disabled title="Model"><img class="resource-icon" src="assets/huggingface-color.svg" alt="" aria-hidden="true" width="20" height="20"><span>Model</span><span class="resource-status">Coming soon</span></button><button type="button" disabled title="Dataset"><svg class="icon-database" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="#3B82A0" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v14c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></svg><span>Dataset</span><span class="resource-status">Coming soon</span></button></div>
 </section>
 
 <section id="overview" aria-labelledby="overview-title">
   <h2 id="overview-title">Overview</h2>
-  <div class="rm-video" id="demo-video" role="region" aria-label="RingMatch overview video" tabindex="-1">
-    <div class="rm-video-stage">
-      <video id="overview-video" controls autoplay muted playsinline preload="auto" poster="assets/video/overview-case01-poster.webp" aria-label="RingMatch complete inference on a San Francisco neighborhood">
-        <source src="assets/video/overview-case01.mp4" type="video/mp4">
-        <a href="assets/video/overview-case01.mp4">Watch the RingMatch demo</a>
-      </video>
-      <div class="rm-video-notice" id="video-notice" role="status" hidden>Loading...</div>
-      <button type="button" id="video-play-overlay" class="rm-video-play-overlay" aria-label="Play overview video" hidden>Play demo</button>
-    </div>
-    <div class="rm-video-controls" id="video-controls" hidden>
-      <button type="button" id="video-play" class="rm-media-button" aria-label="Play overview video"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg></button>
-      <input type="range" id="video-seek" min="0" max="1000" step="1" value="0" aria-label="Seek overview video" disabled>
-      <span id="video-time" class="rm-video-time">0:00 / 1:00</span>
-      <select id="video-speed" aria-label="Video playback speed"><option value="0.75">0.75×</option><option value="1" selected>1×</option><option value="1.5">1.5×</option><option value="2">2×</option></select>
-      <button type="button" id="video-fullscreen" class="rm-media-button" aria-label="Enter fullscreen"><svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H3v5M16 3h5v5M3 16v5h5M21 16v5h-5"/></svg></button>
-    </div>
-  </div>
+  <div class="rm-motion" id="rm-motion" role="region" aria-label="RingMatch interactive demo" tabindex="-1">
+    <div class="rm-case-bar"><div class="rm-case-picker"><button type="button" id="rm-case-prev" aria-label="Previous case">‹</button><select id="rm-case-select" aria-label="Recorded inference case"></select><button type="button" id="rm-case-next" aria-label="Next case">›</button></div><div class="rm-run-controls"><span class="rm-motion-source" role="status" aria-live="polite"></span><button type="button" id="rm-motion-run">Run</button><button type="button" id="rm-motion-pause" disabled>Pause</button><button type="button" id="rm-motion-reset" disabled>Reset</button></div></div>
+    <div class="rm-motion-stage"><canvas id="rm-motion-canvas" aria-label="Animated RingMatch inference: simultaneous search branches, depth-ring construction, and candidate verification." role="img"></canvas><p class="rm-motion-sr" id="rm-motion-description" aria-live="polite"></p></div>
 
-  <h3 class="rm-interactive-heading" id="interactive-title">Interactive Demo</h3>
-  <div class="rm-motion" id="rm-motion" data-default-case="case-02" role="region" aria-labelledby="interactive-title" tabindex="-1">
-    <div class="rm-case-bar"><div class="rm-case-picker"><button type="button" id="rm-case-prev" aria-label="Previous case">‹</button><select id="rm-case-select" aria-label="Recorded inference case"></select><button type="button" id="rm-case-next" aria-label="Next case">›</button></div></div>
-    <div class="rmx-tabs" role="tablist" aria-label="Explore inference">
-      <button type="button" id="rmx-tab-search" role="tab" data-view="search" aria-selected="true" aria-controls="rmx-panel">Search</button>
-      <button type="button" id="rmx-tab-rings" role="tab" data-view="rings" aria-selected="false" aria-controls="rmx-panel" tabindex="-1">Depth Rings</button>
-      <button type="button" id="rmx-tab-verification" role="tab" data-view="verification" aria-selected="false" aria-controls="rmx-panel" tabindex="-1">Verification</button>
-    </div>
-    <div class="rmx-workspace" aria-busy="true">
-      <div id="rmx-panel" role="tabpanel" aria-labelledby="rmx-tab-search"></div>
-      <div class="rm-case-loading" id="rm-case-loading" role="status">Loading...</div>
-    </div>
-    <div class="rmx-footer"><p id="rmx-explanation" aria-live="polite">Select a branch or a cluster to inspect the search.</p><span id="rmx-status" role="status"></span><button type="button" id="rmx-retry" hidden>Retry</button></div>
   </div>
 </section>
 
@@ -170,9 +141,14 @@
 
 <section id="citation" aria-labelledby="citation-title">
   <div class="citation-heading"><h2 id="citation-title">Citation</h2><div class="citation-actions"><button type="button" id="copy-citation">Copy BibTeX</button></div></div>
-  <div class="citation-card"><pre><code id="citation-code">@misc{ringmatch,
-  author = {Qingguo Hu and Xinyu Ma and Yujie Lin and Yaoxiang Wang and Qi Shi and Zonghao Guo and Chi Chen and Jinsong Su},
-  title = {Beyond Local Refinement: Wide-Area Precise Cross-View Localization}
+  <div class="citation-card"><pre><code id="citation-code">@misc{hu2026localrefinementwideareaprecise,
+  title={Beyond Local Refinement: Wide-Area Precise Cross-View Localization},
+  author={Qingguo Hu and Xinyu Ma and Yujie Lin and Yaoxiang Wang and Qi Shi and Zonghao Guo and Chi Chen and Jinsong Su},
+  year={2026},
+  eprint={2611.04759},
+  archivePrefix={arXiv},
+  primaryClass={cs.CV},
+  url={https://arxiv.org/abs/2611.04759}
 }
 </code></pre></div>
   <p class="note citation-status" id="citation-status" role="status" aria-live="polite"></p>
@@ -181,5 +157,5 @@
 </main>
 <footer><p>RingMatch · Wide-area cross-view localization</p><a href="#">Back to top</a></footer>
 <dialog id="image-dialog"><button type="button" class="dialog-close" aria-label="Close figure">×</button><img alt="Enlarged paper figure"></dialog>
-<script src="results-data.js"></script><script src="overview-trace.js?v=ordered-branches-20261027"></script><script src="overview.js?v=inspect-20261030"></script><script src="app.js?v=simple-loading-20261029"></script><script src="video.js?v=overview-20261030"></script>
+<script src="results-data.js"></script><script src="overview-trace.js?v=ordered-branches-20261027"></script><script src="overview.js?v=canvas-restored-20261104"></script><script src="app.js?v=simple-loading-20261029"></script>
 </body></html>
