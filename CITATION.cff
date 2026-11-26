@@ -1,0 +1,29 @@
+cff-version: 1.2.0
+message: "If you use RingMatch in your research, please cite the paper below."
+title: RingMatch
+authors: &authors
+  - given-names: Qingguo
+    family-names: Hu
+  - given-names: Xinyu
+    family-names: Ma
+  - given-names: Yujie
+    family-names: Lin
+  - given-names: Yaoxiang
+    family-names: Wang
+  - given-names: Qi
+    family-names: Shi
+  - given-names: Zonghao
+    family-names: Guo
+  - given-names: Chi
+    family-names: Chen
+  - given-names: Jinsong
+    family-names: Su
+repository-code: https://github.com/qghuxmu/RingMatch
+url: https://qghuxmu.github.io/RingMatch/
+preferred-citation:
+  type: article
+  title: "Beyond Local Refinement: Wide-Area Precise Cross-View Localization"
+  authors: *authors
+  journal: arXiv
+  year: 2026
+  url: https://arxiv.org/abs/2611.04759

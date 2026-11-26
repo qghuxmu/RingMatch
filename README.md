@@ -2,20 +2,30 @@
 
 **Beyond Local Refinement: Wide-Area Precise Cross-View Localization**
 
-[Project page and demo](https://qghuxmu.github.io/RingMatch/)
+[Paper (PDF)](https://arxiv.org/pdf/2611.04759) · [Project page](https://qghuxmu.github.io/RingMatch/) · [Demo](https://qghuxmu.github.io/RingMatch/#rm-motion)
 
-RingMatch is a search-and-verification framework for wide-area cross-view localization. It combines multi-hypothesis branch-and-zoom search with depth-ring-grounded candidate verification.
+Qingguo Hu, Xinyu Ma, Yujie Lin, Yaoxiang Wang, Qi Shi, Zonghao Guo, Chi Chen, and Jinsong Su
 
-The project website is in [`docs/`](docs/). The overview replays eight recorded same-area inference cases from four cities, using the experiment configuration (M=16, B=4). The replay preserves sampled coordinates, clusters, crop bounds, integer path-support totals, depth-ring values, ground-truth reference positions, and LVLM decisions. Case data and compressed images load on demand. Ring curves use circular smoothing for display; raw numerical arrays and verifier records remain unchanged. The Run button starts a replay at a fixed speed; the shortlist keeps the source search layout order and ranks. Display labels are A then B, colors follow each search branch, and rings and verifier decisions are mapped to the same physical candidates. Original A/B labels remain in the recorded case data. A supplementary verifier pass provides A/B choice probabilities from the original six-image inputs and checkpoint, normalized over the two answer tokens after the answer prefix. These scores follow the same display-label mapping; the original selected candidates remain unchanged.
+RingMatch localizes a ground panorama within a wide aerial region. It uses multi-hypothesis search to refine candidate locations and compares ground and aerial depth rings to resolve visually similar alternatives. The paper also introduces VIGOR-Pro for evaluating wide-area cross-view localization.
 
-## Website
+## Code release
 
-The website uses static HTML, CSS, and JavaScript, with no build step. GitHub Pages publishes the `docs/` directory on the `main` branch.
+**Coming soon.** The RingMatch implementation and usage instructions will be released in this repository.
 
-To update the website, edit files in `docs/` and push changes to `main`.
+## Project website
 
-The depth-map previews are offline, direct full-panorama predictions from Depth Anything V2 Metric Outdoor Large. They illustrate the depth stage and are distinct from the recorded rings and verifier inputs. Crop guides retain the source-mosaic boundary shifts from the recorded run; when a child extends beyond its parent view, the replay briefly reveals surrounding mosaic context and marks the original input window with a dashed outline.
+The [project page](https://qghuxmu.github.io/RingMatch/) includes an interactive demo with eight recorded inference cases. Its source is in [`docs/`](docs/), which GitHub Pages serves from the `main` branch.
 
-Method explanations highlight the corresponding figure region on hover. Qualitative examples crossfade after decoding, result values update without reordering rows, and motion respects reduced-motion preferences.
+## Citation
 
-[Read the paper on arXiv](https://arxiv.org/abs/2611.04759)
+```bibtex
+@misc{hu2026localrefinementwideareaprecise,
+  title={Beyond Local Refinement: Wide-Area Precise Cross-View Localization},
+  author={Qingguo Hu and Xinyu Ma and Yujie Lin and Yaoxiang Wang and Qi Shi and Zonghao Guo and Chi Chen and Jinsong Su},
+  year={2026},
+  eprint={2611.04759},
+  archivePrefix={arXiv},
+  primaryClass={cs.CV},
+  url={https://arxiv.org/abs/2611.04759}
+}
+```
