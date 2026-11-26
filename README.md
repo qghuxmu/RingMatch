@@ -25,7 +25,7 @@
 
 ## Code release
 
-**Coming soon.** The RingMatch implementation and usage instructions will be released here. The [interactive demo](https://qghuxmu.github.io/RingMatch/#rm-motion) shows eight recorded inference cases, from search through verification.
+**Coming soon.** The RingMatch implementation and usage instructions will be released here.
 
 ## Citation
 
