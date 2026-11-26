@@ -1,4 +1,4 @@
-<h1 align="center">Beyond Local Refinement: Wide-Area Precise Cross-View Localization</h1>
+<h1 align="center">Beyond Local Refinement:<br>Wide-Area Precise Cross-View Localization</h1>
 
 <p align="center">
   Qingguo&nbsp;Hu<sup>1</sup> ·
